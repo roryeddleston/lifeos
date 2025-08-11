@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Habit {
+  id         String        @id @default(cuid())
+  name       String
+  createdAt  DateTime      @default(now())
+  records    HabitRecord[]
+}
+
+model HabitRecord {
+  id        String   @id @default(cuid())
+  date      DateTime
+  completed Boolean  @default(false)
+  habit     Habit    @relation(fields: [habitId], references: [id])
+  habitId   String
+
+  @@unique([date, habitId])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Task {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  status      TaskStatus  @default(TODO)
+  createdAt   DateTime    @default(now())
+}
+
+model Goal {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  targetValue  Int
+  currentValue Int      @default(0)
+  unit         String
+  deadline     DateTime?
+  createdAt    DateTime @default(now())
+}
