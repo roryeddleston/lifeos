@@ -2,6 +2,9 @@
 
 import { motion } from "framer-motion";
 import { containerVariants, cardVariants, fadeUp } from "@/lib/animations";
+import StatCard from "@/components/cards/StatCard";
+import Card from "@/components/cards/Card";
+import { Activity, ListTodo, Target, BarChart3 } from "lucide-react";
 
 export default function Home() {
   return (
@@ -16,42 +19,77 @@ export default function Home() {
         Dashboard
       </motion.h1>
 
-      {/* Top row */}
+      {/* Stats row */}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="show"
       >
-        {["Chart / Stats", "Habits Overview", "Tasks Overview"].map((label) => (
-          <motion.div
-            key={label}
-            variants={cardVariants}
-            className="h-32 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center
-                       shadow-sm hover:shadow transition-shadow"
-          >
-            {label}
-          </motion.div>
-        ))}
+        <motion.div variants={cardVariants}>
+          <StatCard
+            label="Habits completed (today)"
+            value={3}
+            delta="+1"
+            positive
+            icon={Activity}
+          />
+        </motion.div>
+
+        <motion.div variants={cardVariants}>
+          <StatCard
+            label="Open tasks"
+            value={12}
+            delta="-3"
+            positive={false}
+            icon={ListTodo}
+          />
+        </motion.div>
+
+        <motion.div variants={cardVariants}>
+          <StatCard
+            label="Goals on track"
+            value="2/4"
+            delta="+1"
+            positive
+            icon={Target}
+          />
+        </motion.div>
       </motion.div>
 
-      {/* Second row */}
+      {/* Charts / sections */}
       <motion.div
-        className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"
+        className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="show"
       >
-        {["Goals Progress", "Recent Activity"].map((label) => (
-          <motion.div
-            key={label}
-            variants={cardVariants}
-            className="h-48 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center
-                       shadow-sm hover:shadow transition-shadow"
-          >
-            {label}
-          </motion.div>
-        ))}
+        <motion.div variants={cardVariants}>
+          <Card title="Weekly Habit Streaks" subtitle="Last 7 days">
+            <div className="h-48 rounded-md bg-gray-100 flex items-center justify-center text-gray-500">
+              <BarChart3 className="mr-2" size={18} /> Placeholder chart
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={cardVariants}>
+          <Card title="Recent Activity" subtitle="Most recent updates">
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center justify-between">
+                <span>Completed “Drink Water”</span>
+                <span className="text-gray-500">2m ago</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span>Marked “Write Journal” as skipped</span>
+                <span className="text-gray-500">1h ago</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span>Created goal “Read 10 books”</span>
+                <span className="text-gray-500">Yesterday</span>
+              </li>
+            </ul>
+          </Card>
+        </motion.div>
       </motion.div>
     </div>
   );
