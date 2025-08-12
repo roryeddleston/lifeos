@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/layout/Sidebar";
+import AppShell from "@/components/layout/AppShell";
+import { montserrat } from "@/styles/fonts";
 
 export const metadata: Metadata = {
   title: "Life OS",
   description: "Your personal operating system.",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({
@@ -13,22 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-white text-gray-900">
-        <div className="md:flex">
-          <Sidebar />
-          <div className="flex-1 min-h-screen">
-            <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur">
-              <div className="mx-auto max-w-6xl px-4 py-3">
-                <h1 className="text-sm font-medium tracking-tight">
-                  Welcome back
-                </h1>
-              </div>
-            </header>
-
-            <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-          </div>
-        </div>
+    <html lang="en" className="h-full">
+      <body
+        className={`${montserrat.className} min-h-screen bg-white text-gray-900`}
+      >
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
