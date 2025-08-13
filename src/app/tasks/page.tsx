@@ -1,17 +1,51 @@
+import React from "react";
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
-import RowActions from "./RowActions";
-import RowComplete from "./RowComplete";
 import QuickAdd from "@/components/tasks/QuickAdd";
-import { formatDueLabel } from "@/lib/date";
+import Filters from "./Filters";
+import TasksTable from "./TasksTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function TasksPage() {
+type PageProps = {
+  searchParams?: { view?: string };
+};
+
+export default async function TasksPage({ searchParams }: PageProps) {
+  const view = (searchParams?.view ?? "all").toLowerCase();
+
+  // Build filter for initial load
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const addDays = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + n);
+    return d;
+  };
+
+  const where: any = {};
+
+  // Date filters
+  if (view === "today") {
+    where.dueDate = { gte: today, lt: addDays(1) };
+  } else if (view === "week") {
+    where.dueDate = { gte: today, lt: addDays(7) };
+  } else if (view === "nodate") {
+    where.dueDate = null;
+  }
+
+  // Status filter: only include DONE on the "done" view
+  if (view === "done") {
+    where.status = "DONE";
+  } else {
+    where.status = { not: "DONE" };
+  }
+
   const tasks = await prisma.task.findMany({
+    where,
     orderBy: [
-      { dueDate: { sort: "asc", nulls: "last" } as any },
-      { createdAt: "asc" },
+      { dueDate: { sort: "asc", nulls: "last" } as any }, // undated last
+      { createdAt: "asc" }, // newest at bottom of group
     ],
     select: {
       id: true,
@@ -21,78 +55,16 @@ export default async function TasksPage() {
     },
   });
 
-  const todayMidnight = new Date();
-  todayMidnight.setHours(0, 0, 0, 0);
-
   return (
-    <div className="p-6 space-y-6">
-      {/* Task list */}
+    <div className="p-6 space-y-1">
+      <div className="flex items-center justify-between">
+        <Filters />
+      </div>
+
       <Card className="border-0 !shadow-none">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200">
-                <th className="py-2 pr-2 w-10"></th>
-                <th className="py-2 pr-4">Title</th>
-                <th className="py-2 pr-4">Due</th>
-                <th className="py-2 pr-0 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => {
-                const isDone = t.status === "DONE";
-                const isOverdue =
-                  !!t.dueDate &&
-                  new Date(t.dueDate).setHours(0, 0, 0, 0) <
-                    todayMidnight.getTime() &&
-                  !isDone;
-
-                return (
-                  <tr
-                    key={t.id}
-                    className="border-b border-gray-200 last:border-0"
-                  >
-                    <td className="py-3 pr-2 align-middle">
-                      <RowComplete id={t.id} completed={isDone} />
-                    </td>
-                    <td className="py-3 pr-4 align-middle capitalize">
-                      <span
-                        className={isDone ? "line-through text-gray-500" : ""}
-                      >
-                        {t.title}
-                      </span>
-                    </td>
-                    <td
-                      className={`py-3 pr-4 align-middle ${
-                        isOverdue ? "text-red-600" : ""
-                      }`}
-                    >
-                      {formatDueLabel(t.dueDate as any)}
-                    </td>
-                    <td className="py-3 pr-0 text-right align-middle">
-                      <RowActions
-                        id={t.id}
-                        title={t.title}
-                        dueDate={t.dueDate as any}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {tasks.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-500">
-                    No tasks yet — add a few below.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <TasksTable initial={tasks} view={view} />
       </Card>
 
-      {/* Quick add below the list */}
       <QuickAdd />
     </div>
   );
