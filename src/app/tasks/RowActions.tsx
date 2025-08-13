@@ -33,9 +33,7 @@ export default function RowActions({
         });
         return;
       }
-
       startTransition(() => router.refresh());
-
       toast({
         variant: "success",
         title: "Task deleted",
@@ -77,7 +75,7 @@ export default function RowActions({
       <button
         onClick={handleDelete}
         disabled={loading}
-        className="inline-flex items-center rounded mr-4 p-1 text-red-600/70 hover:text-red-700 focus:text-red-700 transition-colors disabled:opacity-50"
+        className="inline-flex items-center rounded p-1 text-red-600/70 hover:text-red-700 focus:text-red-700 transition-colors disabled:opacity-50"
         aria-label={`Delete task “${title}”`}
         title="Delete"
       >
