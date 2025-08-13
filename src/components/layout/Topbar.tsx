@@ -32,7 +32,7 @@ export default function Topbar({
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-white/70 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/70 backdrop-blur">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
         <button
           className="md:hidden rounded p-2 hover:bg-gray-100"

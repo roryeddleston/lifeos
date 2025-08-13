@@ -25,7 +25,7 @@ export default function Sidebar({ className = "" }: { className?: string }) {
 
   return (
     <aside
-      className={`h-screen sticky top-0 border-r bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60
+      className={`h-screen sticky top-0 border-r border-gray-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60
       ${
         open ? "w-64" : "w-16"
       } transition-[width] duration-300 ease-out overflow-hidden ${className}`}

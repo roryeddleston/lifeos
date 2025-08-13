@@ -16,7 +16,7 @@ export default function Card({
 }: CardProps) {
   return (
     <section
-      className={`rounded-xl border bg-white shadow-sm transition-shadow hover:shadow ${className}`}
+      className={`rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow ${className}`}
     >
       {(title || subtitle) && (
         <header className="px-4 pt-4">
