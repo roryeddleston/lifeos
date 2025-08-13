@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import QuickAdd from "./QuickAdd";
+import QuickAdd from "../../components/tasks/QuickAdd";
 import RowActions from "./RowActions";
 
 export type Task = {
