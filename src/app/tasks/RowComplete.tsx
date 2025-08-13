@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, startTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { startTransition } from "react";
 import { useToast } from "@/components/ui/Toaster";
 
 export default function RowComplete({
   id,
   completed,
+  onToggle,
 }: {
   id: string;
   completed: boolean;
+  onToggle?: (next: boolean) => void; // notify parent to remove row if needed
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -37,10 +40,12 @@ export default function RowComplete({
         });
         return;
       }
+
+      onToggle?.(next); // let parent decide if it should remove the row
       startTransition(() => router.refresh());
     } catch (e) {
       console.error(e);
-      setChecked(!next); // revert
+      setChecked(!next);
       toast({
         variant: "error",
         title: "Network error",
