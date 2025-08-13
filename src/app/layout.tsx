@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import { montserrat } from "@/styles/fonts";
+import { ToastProvider } from "@/components/ui/Toaster";
 
 export const metadata: Metadata = {
   title: "Life OS",
@@ -19,7 +20,9 @@ export default function RootLayout({
       <body
         className={`${montserrat.className} min-h-screen bg-white text-gray-900`}
       >
-        <AppShell>{children}</AppShell>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
       </body>
     </html>
   );

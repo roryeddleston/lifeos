@@ -7,10 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { taskSchema, type TaskInput } from "@/lib/validation";
 import Input from "@/components/forms/Input";
 import Textarea from "@/components/forms/Textarea";
-import Select from "@/components/forms/Select";
+import { useToast } from "@/components/ui/Toaster";
 
 export default function TaskForm() {
   const router = useRouter();
+  const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -19,7 +20,7 @@ export default function TaskForm() {
     formState: { errors },
   } = useForm<TaskInput>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { status: "TODO" },
+    defaultValues: { status: "TODO" }, // keep default for API/schema compatibility
   });
 
   const onSubmit = async (data: TaskInput) => {
@@ -30,16 +31,28 @@ export default function TaskForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+
       if (!res.ok) {
-        const text = await res.text();
+        const text = await res.text().catch(() => "");
         console.error("POST /api/tasks failed:", res.status, text);
-        throw new Error("Failed to create task");
+        toast({
+          variant: "error",
+          title: "Could not create task",
+          description: `HTTP ${res.status}`,
+        });
+        return;
       }
+
+      toast({ variant: "success", title: "Task created" });
       router.push("/tasks");
       router.refresh?.();
     } catch (e) {
       console.error(e);
-      alert("Could not save task.");
+      toast({
+        variant: "error",
+        title: "Network error",
+        description: "Please try again.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -63,24 +76,17 @@ export default function TaskForm() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Simple presentational select; value bound via hidden select below */}
-        <Select
-          label="Status"
-          options={[
-            { label: "To do", value: "TODO" },
-            { label: "In progress", value: "IN_PROGRESS" },
-            { label: "Done", value: "DONE" },
-          ]}
-        />
         <Input
           type="date"
           label="Due date"
           {...register("dueDate")}
           error={errors.dueDate?.message}
         />
+        {/* spacer */}
+        <div />
       </div>
 
-      {/* Hidden native select registered with RHF to actually submit the status */}
+      {/* Hidden native select to satisfy schema/API but keep UI minimal */}
       <select className="hidden" {...register("status")}>
         <option value="TODO">TODO</option>
         <option value="IN_PROGRESS">IN_PROGRESS</option>
@@ -97,7 +103,7 @@ export default function TaskForm() {
         </button>
         <button
           type="button"
-          onClick={() => history.back()}
+          onClick={() => router.back()}
           className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
         >
           Cancel
