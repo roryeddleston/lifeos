@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { parseQuickDate } from "@/lib/quickdate";
-import { formatDateGB } from "@/lib/date";
+import { useToast } from "@/components/ui/Toaster";
 
 type Task = {
   id: string;
@@ -20,7 +20,10 @@ type Task = {
 
 export default function QuickAdd() {
   const router = useRouter();
+  const toast = useToast();
+
   const [value, setValue] = useState("");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [optimistic, addOptimistic] = useOptimistic<Task[]>(
     [],
@@ -28,25 +31,8 @@ export default function QuickAdd() {
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Autofocus on mount
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
-
-  // 'q' focuses input
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (
-        e.key.toLowerCase() === "q" &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !e.altKey
-      ) {
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   function splitLines(raw: string) {
@@ -58,7 +44,8 @@ export default function QuickAdd() {
 
   function toPayload(lines: string) {
     return splitLines(lines).map((line) => {
-      const iso = parseQuickDate(line); // 'YYYY-MM-DD' or null
+      const parsedISO = parseQuickDate(line); // Natural date in text
+      const iso = parsedISO ?? selectedDate ?? null;
       const cleaned = line
         .replace(
           /\b(today|tomorrow|sun|mon|tue|wed|thu|fri|sat|in\s+\d+\s+days?)\b/gi,
@@ -74,7 +61,6 @@ export default function QuickAdd() {
     const tasksPayload = toPayload(lines);
     if (tasksPayload.length === 0) return;
 
-    // Optimistic preview (wrap in transition)
     const optimisticTasks: Task[] = tasksPayload.map((t) => ({
       id: crypto.randomUUID(),
       title: t.title,
@@ -94,21 +80,31 @@ export default function QuickAdd() {
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("POST /api/tasks/bulk failed:", res.status, text);
-        alert(`Could not create tasks (HTTP ${res.status})`);
+        toast({
+          variant: "error",
+          title: "Could not create task(s)",
+          description: `HTTP ${res.status}`,
+        });
         return;
       }
 
-      // Revalidate list, clear, and refocus
       startTransition(() => router.refresh());
       setValue("");
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
+        requestAnimationFrame(() => inputRef.current?.focus());
+      });
+
+      toast({
+        variant: "success",
+        title: tasksPayload.length > 1 ? "Tasks added" : "Task added",
       });
     } catch (e) {
       console.error(e);
-      alert("Could not create tasks");
+      toast({
+        variant: "error",
+        title: "Network error",
+        description: "Please try again.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -116,81 +112,51 @@ export default function QuickAdd() {
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      // Cmd/Ctrl+Enter: add all lines
       e.preventDefault();
       const text = value.trim();
       if (text) createMany(text);
     } else if (e.key === "Enter" && !e.shiftKey) {
-      // Enter on single line: add that one task
       const lines = splitLines(value);
       if (lines.length <= 1) {
         e.preventDefault();
         if (lines[0]) createMany(lines[0]);
       }
     }
-    // Shift+Enter -> newline (do nothing)
   };
 
   return (
-    <div className="rounded-xl border bg-white p-3 shadow-sm">
-      <label className="block text-sm font-medium mb-2">Quick add</label>
+    <div className="rounded-xl bg-white p-3 space-y-3">
       <textarea
         ref={inputRef}
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Type a task and press Enter"
+        placeholder="Type a task"
         className="w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-900/10"
         rows={3}
         disabled={submitting}
+        aria-label="Task title"
       />
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="flex items-center gap-1">
-            <kbd className="rounded border px-1">Enter</kbd> add
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="rounded border px-1">Shift</kbd>+
-            <kbd className="rounded border px-1">Enter</kbd> newline
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="rounded border px-1">⌘</kbd>/
-            <kbd className="rounded border px-1">Ctrl</kbd>+
-            <kbd className="rounded border px-1">Enter</kbd> add all
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="rounded border px-1">q</kbd> focus
-          </span>
-        </div>
-        <button
-          onClick={() => {
-            const text = value.trim();
-            if (text) createMany(text);
-          }}
-          disabled={submitting || !value.trim()}
-          className="rounded-md bg-gray-900 text-white px-3 py-1.5 hover:bg-black disabled:opacity-50"
-        >
-          Add
-        </button>
-      </div>
 
-      {/* Optional optimistic preview */}
-      {optimistic.length > 0 && (
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {optimistic.slice(0, 4).map((t) => (
-            <div
-              key={t.id}
-              className="rounded-md border px-2 py-1 text-sm flex items-center justify-between"
-            >
-              <span className="truncate">{t.title}</span>
-              <span className="text-gray-500 text-xs ml-2">
-                {t.dueDate ? formatDateGB(t.dueDate) : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <input
+        type="date"
+        value={selectedDate ?? ""}
+        onChange={(e) => setSelectedDate(e.target.value || null)}
+        className="rounded-md border mr-4 px-2 py-1 text-sm"
+        aria-label="Due date (optional)"
+      />
+
+      <button
+        onClick={() => {
+          const text = value.trim();
+          if (text) createMany(text);
+        }}
+        disabled={submitting || !value.trim()}
+        className="rounded-md bg-gray-900 text-white px-3 py-1.5 hover:bg-black disabled:opacity-50"
+      >
+        Add
+      </button>
     </div>
   );
 }
