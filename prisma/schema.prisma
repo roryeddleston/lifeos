@@ -12,6 +12,7 @@ model Habit {
   name       String
   createdAt  DateTime      @default(now())
   records    HabitRecord[]
+  userId     String?
 }
 
 model HabitRecord {
@@ -37,6 +38,12 @@ model Task {
   dueDate     DateTime?
   status      TaskStatus  @default(TODO)
   createdAt   DateTime    @default(now())
+
+  // NEW — for manual sort order
+  position    Int         @default(0)
+
+  // NEW — for per-user data scoping (auth-ready)
+  userId      String?
 }
 
 model Goal {
@@ -48,4 +55,5 @@ model Goal {
   unit         String
   deadline     DateTime?
   createdAt    DateTime @default(now())
+  userId       String?
 }
