@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { startTransition } from "react";
-import { useToast } from "@/components/ui/Toaster";
+import { startTransition, useState } from "react";
 
 export default function RowComplete({
   id,
@@ -12,17 +10,18 @@ export default function RowComplete({
 }: {
   id: string;
   completed: boolean;
-  onToggle?: (next: boolean) => void;
+  onToggle?: (next: boolean) => void; // allow parent to optimistically remove
 }) {
   const router = useRouter();
-  const toast = useToast();
-  const [checked, setChecked] = useState(completed);
   const [loading, setLoading] = useState(false);
 
   async function toggle(next: boolean) {
     if (loading) return;
-    setChecked(next); // optimistic
     setLoading(true);
+
+    // Optimistic update in parent (remove/move item from the current list)
+    onToggle?.(next);
+
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
@@ -30,44 +29,46 @@ export default function RowComplete({
         body: JSON.stringify({ status: next ? "DONE" : "TODO" }),
       });
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("PATCH /api/tasks/:id failed:", res.status, text);
-        setChecked(!next); // revert
-        toast({
-          variant: "error",
-          title: "Update failed",
-          description: `HTTP ${res.status}`,
-        });
-        return;
+        // Re-fetch to sync if server failed
+        startTransition(() => router.refresh());
+      } else {
+        // Light refresh to keep server in sync (positions, etc.)
+        startTransition(() => router.refresh());
       }
-      onToggle?.(next);
+    } catch {
       startTransition(() => router.refresh());
-    } catch (e) {
-      console.error(e);
-      setChecked(!next);
-      toast({
-        variant: "error",
-        title: "Network error",
-        description: "Please try again.",
-      });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <label
-      className="inline-flex items-center justify-center p-1 rounded cursor-pointer hover:bg-gray-100 transition-colors focus-within:ring-2 focus-within:ring-gray-300"
-      title={checked ? "Mark as not done" : "Mark as done"}
+    <button
+      type="button"
+      className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-300 hover:border-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      aria-pressed={completed}
+      aria-label={completed ? "Mark as not done" : "Mark as done"}
+      title={completed ? "Mark as not done" : "Mark as done"}
+      onClick={() => toggle(!completed)}
+      disabled={loading}
     >
-      <input
-        type="checkbox"
-        className="h-4 w-4 accent-gray-900 cursor-pointer"
-        checked={checked}
-        onChange={(e) => toggle(e.target.checked)}
-        aria-label={checked ? "Mark as not done" : "Mark as done"}
-        disabled={loading}
-      />
-    </label>
+      {completed ? (
+        // simple checkmark
+        <svg
+          className="h-4 w-4 text-emerald-600"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      ) : (
+        <span className="sr-only">Mark complete</span>
+      )}
+    </button>
   );
 }
