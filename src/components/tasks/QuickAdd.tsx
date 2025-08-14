@@ -25,11 +25,14 @@ export default function QuickAdd() {
   const [value, setValue] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
   const [optimistic, addOptimistic] = useOptimistic<Task[]>(
     [],
     (state, newOnes: Task[]) => [...newOnes, ...state]
   );
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -44,7 +47,7 @@ export default function QuickAdd() {
 
   function toPayload(lines: string) {
     return splitLines(lines).map((line) => {
-      const parsedISO = parseQuickDate(line); // Natural date in text
+      const parsedISO = parseQuickDate(line); // parse "today", "tomorrow", "mon", etc.
       const iso = parsedISO ?? selectedDate ?? null;
       const cleaned = line
         .replace(
@@ -90,6 +93,9 @@ export default function QuickAdd() {
 
       startTransition(() => router.refresh());
       setValue("");
+      setSelectedDate(null); // reset chosen date after adding
+
+      // Refocus textarea smoothly
       requestAnimationFrame(() => {
         requestAnimationFrame(() => inputRef.current?.focus());
       });
@@ -133,30 +139,55 @@ export default function QuickAdd() {
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="Type a task"
-        className="w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-900/10"
+        className="w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-300 hover:border-gray-400 transition-colors"
         rows={3}
         disabled={submitting}
         aria-label="Task title"
       />
 
-      <input
-        type="date"
-        value={selectedDate ?? ""}
-        onChange={(e) => setSelectedDate(e.target.value || null)}
-        className="rounded-md border mr-4 px-2 py-1 text-sm"
-        aria-label="Due date (optional)"
-      />
+      <div className="flex items-center gap-2">
+        <input
+          ref={dateRef}
+          type="date"
+          value={selectedDate ?? ""}
+          onChange={(e) => setSelectedDate(e.target.value || null)}
+          className="rounded-md border px-2 py-1 text-sm cursor-pointer hover:border-gray-400 focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition-colors"
+          aria-label="Due date (optional)"
+          title="Due date (optional)"
+          disabled={submitting}
+        />
 
-      <button
-        onClick={() => {
-          const text = value.trim();
-          if (text) createMany(text);
-        }}
-        disabled={submitting || !value.trim()}
-        className="rounded-md bg-gray-900 text-white px-3 py-1.5 hover:bg-black disabled:opacity-50"
-      >
-        Add
-      </button>
+        <button
+          type="button"
+          onClick={() => {
+            const text = value.trim();
+            if (text) createMany(text);
+          }}
+          aria-busy={submitting}
+          aria-label="Add task(s)"
+          title="Add task(s)"
+          className="inline-flex items-center justify-center rounded-md bg-gray-900 text-white px-3 py-1.5 cursor-pointer hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {submitting ? "Adding…" : "Add"}
+        </button>
+      </div>
+
+      {/* Optional optimistic preview */}
+      {optimistic.length > 0 && (
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {optimistic.slice(0, 4).map((t) => (
+            <div
+              key={t.id}
+              className="rounded-md border px-2 py-1 text-sm flex items-center justify-between"
+            >
+              <span className="truncate">{t.title}</span>
+              <span className="text-gray-500 text-xs ml-2">
+                {t.dueDate ?? ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
