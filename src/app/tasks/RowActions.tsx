@@ -21,6 +21,7 @@ export default function RowActions({
   async function handleDelete() {
     if (loading) return;
     setLoading(true);
+
     try {
       const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -28,33 +29,39 @@ export default function RowActions({
         console.error("DELETE /api/tasks/:id failed:", res.status, text);
         toast({
           variant: "error",
-          title: "Could not delete",
+          title: "Couldn’t delete",
           description: `HTTP ${res.status}`,
         });
+        setLoading(false);
         return;
       }
+
+      // Refresh in background
       startTransition(() => router.refresh());
+
+      // Offer undo
       toast({
         variant: "success",
         title: "Task deleted",
         action: {
           label: "Undo",
           onClick: async () => {
-            try {
-              const resp = await fetch("/api/tasks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, dueDate, status: "TODO" }),
+            // You could re-create using cached data if desired
+            const body = { title, dueDate, status: "TODO" };
+            const r = await fetch("/api/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            if (!r.ok) {
+              toast({
+                variant: "error",
+                title: "Undo failed",
+                description: `HTTP ${r.status}`,
               });
-              if (!resp.ok) {
-                const txt = await resp.text().catch(() => "");
-                console.error("Undo create failed:", resp.status, txt);
-                return;
-              }
-              startTransition(() => router.refresh());
-            } catch (e) {
-              console.error("Undo create error:", e);
+              return;
             }
+            startTransition(() => router.refresh());
           },
         },
       });
@@ -71,15 +78,16 @@ export default function RowActions({
   }
 
   return (
-    <div className="flex items-center justify-end">
+    <div className="flex items-center justify-end gap-1">
       <button
+        type="button"
         onClick={handleDelete}
         disabled={loading}
-        className="inline-flex items-center rounded p-1 text-red-600/70 hover:text-red-700 focus:text-red-700 transition-colors disabled:opacity-50"
-        aria-label={`Delete task “${title}”`}
-        title="Delete"
+        className="p-1 rounded cursor-pointer hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 disabled:opacity-50 inline-flex"
+        aria-label="Delete task"
+        title="Delete task"
       >
-        <Trash2 size={16} aria-hidden />
+        <Trash2 className="w-4 h-4 text-red-600" />
       </button>
     </div>
   );

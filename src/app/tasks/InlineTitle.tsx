@@ -52,10 +52,11 @@ export default function InlineTitle({
           setEditing(true);
           setTimeout(() => ref.current?.focus(), 0);
         }}
-        className={`text-left w-full ${
+        className={`text-left w-full rounded cursor-pointer hover:bg-gray-100 transition-colors px-1 ${
           done ? "line-through text-gray-500" : ""
-        }`}
+        } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300`}
         aria-label="Edit title"
+        title="Edit title"
       >
         {capSentence(val)}
       </button>
@@ -75,7 +76,8 @@ export default function InlineTitle({
           setEditing(false);
         }
       }}
-      className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+      className="w-full bg-transparent border-b border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
+      aria-label="Task title input"
     />
   );
 }
