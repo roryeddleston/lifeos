@@ -12,7 +12,7 @@ export default function RowComplete({
 }: {
   id: string;
   completed: boolean;
-  onToggle?: (next: boolean) => void; // notify parent to remove row if needed
+  onToggle?: (next: boolean) => void;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -40,8 +40,7 @@ export default function RowComplete({
         });
         return;
       }
-
-      onToggle?.(next); // let parent decide if it should remove the row
+      onToggle?.(next);
       startTransition(() => router.refresh());
     } catch (e) {
       console.error(e);
@@ -57,12 +56,18 @@ export default function RowComplete({
   }
 
   return (
-    <input
-      type="checkbox"
-      className="h-4 w-4 accent-gray-900"
-      checked={checked}
-      onChange={(e) => toggle(e.target.checked)}
-      aria-label={checked ? "Mark as not done" : "Mark as done"}
-    />
+    <label
+      className="inline-flex items-center justify-center p-1 rounded cursor-pointer hover:bg-gray-100 transition-colors focus-within:ring-2 focus-within:ring-gray-300"
+      title={checked ? "Mark as not done" : "Mark as done"}
+    >
+      <input
+        type="checkbox"
+        className="h-4 w-4 accent-gray-900 cursor-pointer"
+        checked={checked}
+        onChange={(e) => toggle(e.target.checked)}
+        aria-label={checked ? "Mark as not done" : "Mark as done"}
+        disabled={loading}
+      />
+    </label>
   );
 }
