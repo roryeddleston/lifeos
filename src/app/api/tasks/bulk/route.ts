@@ -1,32 +1,33 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-type InTask = { title: string; dueDate?: string | null };
+import { getUserId } from "@/lib/user";
 
 export async function POST(req: Request) {
-  try {
-    const body = (await req.json()) as { tasks: InTask[] };
+  const userId = await getUserId();
+  const { tasks } = await req.json().catch(() => ({ tasks: [] as any[] }));
 
-    const clean = (body.tasks || [])
-      .map((t) => ({
-        title: (t.title || "").trim(),
-        dueDate: t.dueDate ? new Date(t.dueDate) : null,
-      }))
-      .filter((t) => t.title.length >= 2);
+  // Get current max position
+  const max = await prisma.task.aggregate({
+    where: { userId },
+    _max: { position: true },
+  });
+  let pos = (max._max.position ?? 0) + 1;
 
-    if (clean.length === 0) {
-      return NextResponse.json({ error: "No valid tasks" }, { status: 400 });
-    }
+  const data = (Array.isArray(tasks) ? tasks : []).map((t: any) => ({
+    title: (t.title as string)?.trim() ?? "",
+    status: "TODO",
+    dueDate: t.dueDate ? new Date(t.dueDate) : null,
+    position: pos++,
+    userId,
+  }));
 
-    const created = await prisma.$transaction(
-      clean.map((data) =>
-        prisma.task.create({ data: { ...data, status: "TODO" } })
-      )
-    );
-
-    return NextResponse.json(created, { status: 201 });
-  } catch (e) {
-    console.error("POST /api/tasks/bulk error:", e);
-    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
+  if (data.length === 0) {
+    return NextResponse.json({ error: "No tasks" }, { status: 400 });
   }
+
+  const created = await prisma.$transaction(
+    data.map((d) => prisma.task.create({ data: d }))
+  );
+
+  return NextResponse.json(created, { status: 201 });
 }
