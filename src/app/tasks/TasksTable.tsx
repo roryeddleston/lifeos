@@ -295,16 +295,6 @@ export default function TasksTable({
               </>
             )}
           </div>
-          {!isDoneView && (
-            <button
-              type="button"
-              onClick={() => document.getElementById("quickadd")?.focus()}
-              className="mt-2 inline-flex items-center rounded-md bg-gray-900 text-white px-3 py-1.5 text-sm hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 cursor-pointer"
-              aria-label="Focus quick add input"
-            >
-              Add a task
-            </button>
-          )}
         </div>
       </div>
     );
