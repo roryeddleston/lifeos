@@ -108,7 +108,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
             className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
             title={`${habit.streak} day streak`}
           >
-            {habit.streak} day{habit.streak > 1 ? "s" : ""} streak
+            {habit.streak} day streak
           </span>
         )}
       </div>
