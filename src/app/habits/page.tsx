@@ -34,7 +34,7 @@ export default async function HabitsPage() {
     },
   });
 
-  // Shared 7-day window (oldest -> newest). Header will match tile widths.
+  // Shared 7-day window (oldest -> newest)
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = addDays(start, i);
     return {
@@ -47,10 +47,12 @@ export default async function HabitsPage() {
   const view = habits.map((h) => {
     const map = new Map<string, boolean>();
     for (const r of h.records) map.set(toISODate(r.date), !!r.completed);
+
     const timeline = days.map((d) => ({
       iso: d.iso,
       completed: map.get(d.iso) ?? false,
     }));
+
     // compute streak from newest back
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
@@ -63,23 +65,30 @@ export default async function HabitsPage() {
   return (
     <div className="p-6 space-y-6">
       <Card className="border-0 !shadow-none">
-        {/* Title + weekday header (aligned to tile sizes) */}
-        <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_auto] items-end">
+        {/* Title + weekday header (must match HabitCard grid exactly) */}
+        <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <h2 className="text-sm font-medium tracking-tight">Habits</h2>
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((d) => (
-              <div
-                key={d.iso}
-                className={`w-8 h-5 text-[11px] leading-5 text-center ${
-                  d.isToday ? "text-gray-900 font-medium" : "text-gray-500"
-                }`}
-                aria-label={d.iso}
-                title={d.iso}
-              >
-                {d.label}
-              </div>
-            ))}
+
+          {/* Middle: fixed 7-day strip — 17rem */}
+          <div className="w-[17rem]">
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((d) => (
+                <div
+                  key={d.iso}
+                  className={`w-8 h-5 text-[11px] leading-5 text-center ${
+                    d.isToday ? "text-gray-900 font-medium" : "text-gray-500"
+                  }`}
+                  aria-label={d.iso}
+                  title={d.iso}
+                >
+                  {d.label}
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Right: fixed spacer to reserve delete column width */}
+          <div className="w-8" aria-hidden />
         </div>
 
         {/* List */}
@@ -95,7 +104,7 @@ export default async function HabitsPage() {
             </div>
           </div>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y divide-gray-200">
             {view.map((h) => (
               <li key={h.id} className="px-4 py-3">
                 <HabitCard habit={h} />

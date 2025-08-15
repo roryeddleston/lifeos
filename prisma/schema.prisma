@@ -19,10 +19,11 @@ model HabitRecord {
   id        String   @id @default(cuid())
   date      DateTime
   completed Boolean  @default(false)
-  habit     Habit    @relation(fields: [habitId], references: [id])
+
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   habitId   String
 
-  @@unique([date, habitId])
+  @@unique([habitId, date], name: "habitId_date")
 }
 
 enum TaskStatus {
@@ -39,10 +40,10 @@ model Task {
   status      TaskStatus  @default(TODO)
   createdAt   DateTime    @default(now())
 
-  // NEW — for manual sort order
+  // manual sort order
   position    Int         @default(0)
 
-  // NEW — for per-user data scoping (auth-ready)
+  // per-user data scoping (auth-ready)
   userId      String?
 }
 
