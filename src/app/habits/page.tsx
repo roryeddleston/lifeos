@@ -79,7 +79,6 @@ export default async function HabitsPage() {
   });
 
   // ---------- Live insights (based on last 7 days) ----------
-  // Overall completion %
   const totalCells = view.length * days.length;
   const completedCells = view.reduce(
     (sum, h) => sum + h.timeline.filter((t) => t.completed).length,
@@ -88,83 +87,34 @@ export default async function HabitsPage() {
   const completionPct =
     totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0;
 
-  // Streaks (max current streak across habits, and best streak in window)
   const currentStreakMax = view.reduce((m, h) => Math.max(m, h.streak), 0);
   const bestStreakMax = view.reduce(
     (m, h) => Math.max(m, maxRun(h.timeline.map((t) => t.completed))),
     0
   );
 
-  // Mini bar chart data: per-day total completions across all habits (0..view.length)
-  const perDayCounts = days.map((d, idx) =>
+  const perDayCounts = days.map((_, idx) =>
     view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
   );
-  const chartMax = Math.max(1, ...perDayCounts); // avoid divide-by-zero
-  const chartHeight = 35; // px
+  const chartMax = Math.max(1, ...perDayCounts);
+  const chartHeight = 35;
   const barWidth = 12;
   const gap = 8;
 
   return (
     <div className="p-6 space-y-6">
-      <Card className="border-0 !shadow-none">
-        {/* Title + weekday header (must match HabitCard grid exactly) */}
-        <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
-          <h2 className="text-sm font-medium tracking-tight">Habits</h2>
+      {/* 1) Heading */}
+      <div className="px-4 pt-4">
+        <h2 className="text-xl font-medium tracking-tight">Habits</h2>
+      </div>
 
-          {/* Middle: fixed 7-day strip — 17rem */}
-          <div className="w-[17rem]">
-            <div className="grid grid-cols-7 gap-2">
-              {days.map((d) => (
-                <div
-                  key={d.iso}
-                  className={`w-8 h-5 text-[11px] leading-5 text-center ${
-                    d.isToday ? "text-gray-900 font-medium" : "text-gray-500"
-                  }`}
-                  aria-label={d.iso}
-                  title={d.iso}
-                >
-                  {d.label}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right: fixed spacer to reserve delete column width */}
-          <div className="w-8" aria-hidden />
-        </div>
-
-        {/* List */}
-        {view.length === 0 ? (
-          <div className="px-4 py-16">
-            <div className="mx-auto max-w-md rounded-lg border bg-white/70 px-6 py-8 text-center">
-              <h3 className="text-sm font-medium text-gray-900">
-                No habits yet
-              </h3>
-              <p className="mt-2 text-sm text-gray-600">
-                Add your first habit below to start building streaks.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-200">
-            {view.map((h) => (
-              <li key={h.id} className="px-4 py-3">
-                <HabitCard habit={h} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <QuickAddHabit />
-
-      {/* Live Insights Section (connected to data) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 pt-10">
+      {/* 2) Charts/Insights */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Completion Summary */}
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-900">This Week</h3>
           <p className="mt-1 text-sm text-gray-600">
-            Overall completion rate across all habits (last 7 days)
+            Overall completion across all habits
           </p>
           <div className="mt-4">
             <div className="h-2 w-full rounded-full bg-gray-100">
@@ -189,7 +139,7 @@ export default async function HabitsPage() {
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-900">Streaks</h3>
           <p className="mt-1 text-sm text-gray-600">
-            Best current and best 7-day streaks among your habits
+            Best current and best 7-day streaks
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-gray-200 p-3">
@@ -271,6 +221,55 @@ export default async function HabitsPage() {
           </div>
         </Card>
       </div>
+
+      {/* 3) Weekday header + List (kept together for perfect alignment) */}
+      <Card className="border-0 !shadow-none">
+        {/* Weekday header (must match HabitCard grid exactly) */}
+        <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
+          <div />
+          <div className="w-[17rem]">
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((d) => (
+                <div
+                  key={d.iso}
+                  className={`w-8 h-5 text-[11px] leading-5 text-center ${
+                    d.isToday ? "text-gray-900 font-medium" : "text-gray-500"
+                  }`}
+                  aria-label={d.iso}
+                  title={d.iso}
+                >
+                  {d.label}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-8" aria-hidden />
+        </div>
+
+        {/* List */}
+        {view.length === 0 ? (
+          <div className="px-4 py-16">
+            <div className="mx-auto max-w-md rounded-lg border bg-white/70 px-6 py-8 text-center">
+              <h3 className="text-sm font-medium text-gray-900">
+                No habits yet
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Add your first habit below to start building streaks.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-200">
+            {view.map((h) => (
+              <li key={h.id} className="px-4 py-3">
+                <HabitCard habit={h} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <QuickAddHabit />
     </div>
   );
 }
