@@ -1,3 +1,4 @@
+// src/app/habits/page.tsx
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
@@ -17,6 +18,21 @@ function addDays(d: Date, n: number) {
 }
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+// helper: best streak inside a boolean array
+function maxRun(arr: boolean[]) {
+  let best = 0;
+  let curr = 0;
+  for (const v of arr) {
+    if (v) {
+      curr++;
+      best = Math.max(best, curr);
+    } else {
+      curr = 0;
+    }
+  }
+  return best;
 }
 
 export default async function HabitsPage() {
@@ -53,7 +69,7 @@ export default async function HabitsPage() {
       completed: map.get(d.iso) ?? false,
     }));
 
-    // compute streak from newest back
+    // compute current streak (from newest back within this 7-day window)
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
@@ -61,6 +77,32 @@ export default async function HabitsPage() {
     }
     return { id: h.id, name: h.name, timeline, streak };
   });
+
+  // ---------- Live insights (based on last 7 days) ----------
+  // Overall completion %
+  const totalCells = view.length * days.length;
+  const completedCells = view.reduce(
+    (sum, h) => sum + h.timeline.filter((t) => t.completed).length,
+    0
+  );
+  const completionPct =
+    totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0;
+
+  // Streaks (max current streak across habits, and best streak in window)
+  const currentStreakMax = view.reduce((m, h) => Math.max(m, h.streak), 0);
+  const bestStreakMax = view.reduce(
+    (m, h) => Math.max(m, maxRun(h.timeline.map((t) => t.completed))),
+    0
+  );
+
+  // Mini bar chart data: per-day total completions across all habits (0..view.length)
+  const perDayCounts = days.map((d, idx) =>
+    view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
+  );
+  const chartMax = Math.max(1, ...perDayCounts); // avoid divide-by-zero
+  const chartHeight = 35; // px
+  const barWidth = 12;
+  const gap = 8;
 
   return (
     <div className="p-6 space-y-6">
@@ -116,22 +158,30 @@ export default async function HabitsPage() {
 
       <QuickAddHabit />
 
-      {/* Dummy Insights Section */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Live Insights Section (connected to data) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 pt-10">
         {/* Completion Summary */}
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-900">This Week</h3>
           <p className="mt-1 text-sm text-gray-600">
-            Dummy data: overall completion rate
+            Overall completion rate across all habits (last 7 days)
           </p>
           <div className="mt-4">
             <div className="h-2 w-full rounded-full bg-gray-100">
               <div
                 className="h-2 rounded-full bg-emerald-500"
-                style={{ width: "68%" }}
+                style={{ width: `${completionPct}%` }}
               />
             </div>
-            <div className="mt-2 text-xs text-gray-600">68% complete</div>
+            <div className="mt-2 text-xs text-gray-600">
+              {completionPct}% complete
+              {totalCells > 0 && (
+                <>
+                  {" "}
+                  ({completedCells}/{totalCells} checks)
+                </>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -139,19 +189,19 @@ export default async function HabitsPage() {
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-900">Streaks</h3>
           <p className="mt-1 text-sm text-gray-600">
-            Dummy data: current & best streaks
+            Best current and best 7-day streaks among your habits
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs text-gray-600">Current</div>
+              <div className="text-xs text-gray-600">Current (max)</div>
               <div className="mt-1 text-lg font-semibold text-gray-900">
-                4 days
+                {currentStreakMax} {currentStreakMax === 1 ? "day" : "days"}
               </div>
             </div>
             <div className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs text-gray-600">Best</div>
+              <div className="text-xs text-gray-600">Best (last 7 days)</div>
               <div className="mt-1 text-lg font-semibold text-gray-900">
-                9 days
+                {bestStreakMax} {bestStreakMax === 1 ? "day" : "days"}
               </div>
             </div>
           </div>
@@ -161,71 +211,64 @@ export default async function HabitsPage() {
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-900">Last 7 Days</h3>
           <p className="mt-1 text-sm text-gray-600">
-            Dummy spark bars (not connected to data)
+            Daily total completions across all habits
           </p>
           <div className="mt-4">
-            <svg viewBox="0 0 140 40" className="w-full">
+            <svg
+              viewBox={`0 0 ${7 * (barWidth + gap) - gap} ${chartHeight + 5}`}
+              className="w-full"
+            >
+              {/* guide lines */}
               <line
                 x1="0"
-                y1="35"
-                x2="140"
-                y2="35"
+                y1={chartHeight}
+                x2={7 * (barWidth + gap) - gap}
+                y2={chartHeight}
                 stroke="#e5e7eb"
                 strokeWidth="1"
               />
               <line
                 x1="0"
-                y1="20"
-                x2="140"
-                y2="20"
+                y1={Math.round(chartHeight * 0.5)}
+                x2={7 * (barWidth + gap) - gap}
+                y2={Math.round(chartHeight * 0.5)}
                 stroke="#f1f5f9"
                 strokeWidth="1"
               />
               <line
                 x1="0"
-                y1="5"
-                x2="140"
-                y2="5"
+                y1={Math.round(chartHeight * 0.15)}
+                x2={7 * (barWidth + gap) - gap}
+                y2={Math.round(chartHeight * 0.15)}
                 stroke="#f8fafc"
                 strokeWidth="1"
               />
-              {([18, 30, 12, 26, 35, 22, 28] as number[]).map((h, i) => {
-                const barWidth = 12;
-                const gap = 8;
+              {perDayCounts.map((count, i) => {
+                const height =
+                  chartMax > 0
+                    ? Math.round((count / chartMax) * chartHeight)
+                    : 0;
                 const x = i * (barWidth + gap);
-                const y = 35 - h;
+                const y = chartHeight - height;
                 return (
                   <rect
                     key={i}
                     x={x}
                     y={y}
                     width={barWidth}
-                    height={h}
+                    height={height}
                     rx="2"
                     className="fill-emerald-500"
                   />
                 );
               })}
             </svg>
-            <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-              <span>Sun</span>
+            <div className="mt-2 grid grid-cols-7 text-center text-xs text-gray-600">
+              {days.map((d) => (
+                <span key={d.iso}>{d.label}</span>
+              ))}
             </div>
           </div>
-        </Card>
-
-        {/* Notes */}
-        <Card className="p-4 lg:col-span-3">
-          <h3 className="text-sm font-medium text-gray-900">Notes</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Placeholder section for comparison with earlier designs. None of the
-            numbers above are live data.
-          </p>
         </Card>
       </div>
     </div>
