@@ -1,13 +1,9 @@
+// src/components/habits/InlineHabitName.tsx
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
-
-function sentenceCase(s: string) {
-  const t = s.trim();
-  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
-}
 
 export default function InlineHabitName({
   id,
@@ -22,37 +18,41 @@ export default function InlineHabitName({
   const router = useRouter();
   const toast = useToast();
 
-  async function save(nextRaw: string) {
-    const next = sentenceCase(nextRaw);
-    // If unchanged or empty after trim, just exit edit mode
-    if (!next || next === value) {
+  async function save(next: string) {
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === name) {
       setEditing(false);
+      setValue(name);
       return;
     }
-
     try {
       const res = await fetch(`/api/habits/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: next }),
+        body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("PATCH /api/habits/:id failed:", res.status, text);
         toast({ variant: "error", title: "Rename failed" });
+        setValue(name);
         setEditing(false);
         return;
       }
-      setValue(next); // reflect immediately
       startTransition(() => router.refresh());
       toast({ variant: "success", title: "Habit updated" });
       setEditing(false);
     } catch (err) {
       console.error(err);
       toast({ variant: "error", title: "Network error" });
+      setValue(name);
       setEditing(false);
     }
   }
+
+  // CSS-only first-letter capitalization (not each word)
+  const firstLetterCap =
+    "truncate text-left text-sm text-gray-900 [&::first-letter]:uppercase";
 
   if (editing) {
     return (
@@ -63,16 +63,15 @@ export default function InlineHabitName({
         onBlur={() => save(value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
-          else if (e.key === "Escape") {
+          if (e.key === "Escape") {
+            setValue(name);
             setEditing(false);
           }
         }}
         disabled={isPending}
-        className="w-full max-w-xs truncate rounded-md border border-transparent px-1 py-0.5 text-sm normal-case focus:border-gray-300 focus:outline-none"
+        className={`w-full max-w-xs rounded-md border border-transparent px-1 py-0.5 ${firstLetterCap} focus:border-gray-300 focus:outline-none`}
         autoCapitalize="sentences"
         spellCheck={false}
-        aria-label="Edit habit name"
-        placeholder="Habit name"
       />
     );
   }
@@ -81,11 +80,10 @@ export default function InlineHabitName({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="w-full max-w-xs truncate text-left text-sm text-gray-900 normal-case hover:underline"
+      className={`w-full max-w-xs hover:underline ${firstLetterCap}`}
       title="Rename habit"
-      aria-label="Rename habit"
     >
-      {sentenceCase(value)}
+      {value}
     </button>
   );
 }
