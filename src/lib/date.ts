@@ -22,6 +22,7 @@ export function formatDueLabel(iso: string | null): string {
   const msPerDay = 24 * 60 * 60 * 1000;
   const diffDays = Math.round((due.getTime() - today.getTime()) / msPerDay);
 
+  if (diffDays === -1) return "Yesterday";
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
   if (diffDays >= 2 && diffDays <= 6) {
