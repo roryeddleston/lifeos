@@ -93,7 +93,7 @@ export default async function Home() {
           value={openTasks}
           delta=""
           positive={false}
-          icon={Activity as any}
+          icon={ListTodo}
         />
         <StatCard
           label="Goals on track"
