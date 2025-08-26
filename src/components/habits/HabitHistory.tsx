@@ -55,21 +55,19 @@ export default function HabitHistory({ id }: { id: string }) {
   const series = data?.series ?? [];
   const n = series.length;
 
-  // chart sizing – compact & professional
-  const H = 128; // svg height
-  const PL = 32; // left padding (wider to clear labels)
-  const PR = 16; // right padding
-  const PT = 16; // top padding
-  const PB = 16; // bottom padding
+  // chart sizing
+  const H = 128;
+  const PL = 38;
+  const PR = 16;
+  const PT = 26;
+  const PB = 26;
   const innerH = H - PT - PB;
 
-  const step = 18; // spacing per point
-  const W = Math.max(520, PL + PR + Math.max(0, n - 1) * step);
+  const step = 18;
+  const W = Math.max(360, PL + PR + Math.max(0, n - 1) * step);
 
-  // y from pct (0..1)
   const y = (pct: number) => PT + (1 - pct) * innerH;
 
-  // x positions
   const xs = useMemo(() => {
     if (n <= 1) return [PL];
     return Array.from(
@@ -78,7 +76,6 @@ export default function HabitHistory({ id }: { id: string }) {
     );
   }, [n, W]);
 
-  // line path
   const path = useMemo(() => {
     if (n === 0) return "";
     const parts: string[] = [];
@@ -90,11 +87,9 @@ export default function HabitHistory({ id }: { id: string }) {
     return parts.join(" ");
   }, [series, xs]);
 
-  // determine the “last week” index (skip current week if present)
   const currentKey = isoWeekKey();
   const lastIdx = n >= 2 && series[n - 1].week === currentKey ? n - 2 : n - 1;
 
-  // stats
   const lastWeekPct = lastIdx >= 0 ? Math.round(series[lastIdx].pct * 100) : 0;
   const windowCount = Math.min(8, n);
   const avgPct =
@@ -109,7 +104,6 @@ export default function HabitHistory({ id }: { id: string }) {
     ? Math.round(Math.max(...series.map((p) => p.pct)) * 100)
     : 0;
 
-  // ---- early states (after hooks) ----
   if (loading) {
     return (
       <div className="rounded-md border border-gray-200 bg-white/70 px-2 py-1.5 text-[11px] text-gray-600">
@@ -133,9 +127,9 @@ export default function HabitHistory({ id }: { id: string }) {
   }
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white/70 px-3 py-2">
+    <div className="rounded-md border border-gray-200 bg-white/70 px-3 py-4">
       {/* header */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div className="text-[11px] font-medium text-gray-900">History</div>
         <div className="text-[10px] text-gray-500">
           {n} {n === 1 ? "week" : "weeks"}
@@ -143,27 +137,18 @@ export default function HabitHistory({ id }: { id: string }) {
       </div>
 
       {/* stats row */}
-      <div className="mb-2 grid grid-cols-3 gap-2">
-        <div
-          className="rounded-[8px] border border-gray-200 px-2 py-1.5"
-          title="Completion in the most recent completed week"
-        >
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
           <div className="text-[10px] text-gray-600">Last week</div>
           <div className="text-sm font-semibold text-gray-900">
             {lastWeekPct}%
           </div>
         </div>
-        <div
-          className="rounded-[8px] border border-gray-200 px-2 py-1.5"
-          title="Average over the last 8 completed weeks (or fewer if not available)"
-        >
+        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
           <div className="text-[10px] text-gray-600">Avg (8w)</div>
           <div className="text-sm font-semibold text-gray-900">{avgPct}%</div>
         </div>
-        <div
-          className="rounded-[8px] border border-gray-200 px-2 py-1.5"
-          title="Best single week across the shown period"
-        >
+        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
           <div className="text-[10px] text-gray-600">Best week</div>
           <div className="text-sm font-semibold text-gray-900">
             {bestWeekPct}%
@@ -171,14 +156,14 @@ export default function HabitHistory({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* tiny legend */}
-      <div className="mb-1 flex items-center gap-2">
+      {/* legend */}
+      <div className="mb-2 flex items-center gap-2">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
         <span className="text-[10px] text-gray-600">Weekly completion %</span>
       </div>
 
-      {/* chart */}
-      <div className="overflow-x-auto">
+      {/* chart centered with padding */}
+      <div className="flex justify-center py-2">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           width={W}
@@ -186,7 +171,6 @@ export default function HabitHistory({ id }: { id: string }) {
           className="block max-w-full"
           aria-label="Weekly completion percentage line chart"
         >
-          {/* Y gridlines & labels at 100 / 50 / 0 */}
           {[1, 0.5, 0].map((p, idx) => {
             const yy = y(p);
             const lbl = `${Math.round(p * 100)}%`;
@@ -200,7 +184,6 @@ export default function HabitHistory({ id }: { id: string }) {
                   stroke="#e5e7eb"
                   strokeWidth="1"
                 />
-                {/* Right-aligned labels tucked just inside plot area */}
                 <text
                   x={PL - 6}
                   y={yy}
@@ -215,7 +198,6 @@ export default function HabitHistory({ id }: { id: string }) {
             );
           })}
 
-          {/* X baseline */}
           <line
             x1={PL}
             y1={y(0)}
@@ -225,7 +207,6 @@ export default function HabitHistory({ id }: { id: string }) {
             strokeWidth="1"
           />
 
-          {/* line */}
           <path
             d={path}
             fill="none"
@@ -235,7 +216,6 @@ export default function HabitHistory({ id }: { id: string }) {
             strokeLinejoin="round"
           />
 
-          {/* points */}
           {series.map((pt, i) => (
             <circle
               key={pt.week + i}
