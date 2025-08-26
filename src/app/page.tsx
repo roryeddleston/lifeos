@@ -1,96 +1,113 @@
-"use client";
-
-import { motion } from "framer-motion";
-import { containerVariants, cardVariants, fadeUp } from "@/lib/animations";
-import StatCard from "@/components/cards/StatCard";
+// src/app/page.tsx
+import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
-import { Activity, ListTodo, Target, BarChart3 } from "lucide-react";
+import StatCard from "@/components/cards/StatCard";
+import WeeklyStreaks from "@/components/charts/WeeklyStreaks";
+import { Activity, ListTodo, Target } from "lucide-react";
 
-export default function Home() {
+// Helper: UTC start of a given day
+function startOfDayUTC(d = new Date()) {
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+}
+// Helper: add N days (UTC)
+function addDays(d: Date, n: number) {
+  const copy = new Date(d);
+  copy.setUTCDate(copy.getUTCDate() + n);
+  return copy;
+}
+// Compute current streak given a Set of YYYY-MM-DD completed dates
+function currentStreakFromSet(completedISOSet: Set<string>, todayISO: string) {
+  // walk backward from today until a miss
+  let streak = 0;
+  let cursor = new Date(todayISO);
+  // Make sure cursor is at 00:00Z
+  cursor = startOfDayUTC(cursor);
+  // Count today backward
+  while (true) {
+    const iso = cursor.toISOString().slice(0, 10);
+    if (!completedISOSet.has(iso)) break;
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+export default async function Home() {
+  // ---- Fetch minimal data to compute streaks efficiently ----
+  const today = startOfDayUTC();
+  const lookbackDays = 60; // check last ~2 months for safety
+  const since = addDays(today, -lookbackDays);
+
+  const habits = await prisma.habit.findMany({
+    orderBy: { createdAt: "asc" },
+    include: {
+      records: {
+        where: { date: { gte: since, lte: today }, completed: true },
+        select: { date: true },
+      },
+    },
+  });
+
+  // Compute current streak per habit
+  const todayISO = today.toISOString().slice(0, 10);
+  const streaks = habits.map((h) => {
+    const completedSet = new Set(
+      h.records.map((r) => r.date.toISOString().slice(0, 10))
+    );
+    const streak = currentStreakFromSet(completedSet, todayISO);
+    return { id: h.id, name: h.name, streak };
+  });
+
+  // Simple stats (keep your existing placeholders if you want)
+  const habitsCompletedToday = habits.reduce((sum, h) => {
+    const hasToday = h.records.some(
+      (r) => r.date.toISOString().slice(0, 10) === todayISO
+    );
+    return sum + (hasToday ? 1 : 0);
+  }, 0);
+
+  // (Optional) quick task/goal placeholders – replace with real queries if desired
+  const openTasks = 12;
+  const goalsOnTrack = "2/4";
+
   return (
-    <div className="p-6">
-      {/* Title */}
-      <motion.h1
-        className="text-2xl font-bold mb-6"
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-      >
-        Dashboard
-      </motion.h1>
+    <div className="p-6 space-y-6">
+      {/* Heading */}
+      <header className="px-1">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+      </header>
 
-      {/* Stats row */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.div variants={cardVariants}>
-          <StatCard
-            label="Habits completed (today)"
-            value={3}
-            delta="+1"
-            positive
-            icon={Activity}
-          />
-        </motion.div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard
+          label="Habits completed (today)"
+          value={habitsCompletedToday}
+          delta=""
+          positive
+          icon={Activity}
+        />
+        <StatCard
+          label="Open tasks"
+          value={openTasks}
+          delta=""
+          positive={false}
+          icon={Activity as any}
+        />
+        <StatCard
+          label="Goals on track"
+          value={goalsOnTrack}
+          delta=""
+          positive
+          icon={Target}
+        />
+      </div>
 
-        <motion.div variants={cardVariants}>
-          <StatCard
-            label="Open tasks"
-            value={12}
-            delta="-3"
-            positive={false}
-            icon={ListTodo}
-          />
-        </motion.div>
-
-        <motion.div variants={cardVariants}>
-          <StatCard
-            label="Goals on track"
-            value="2/4"
-            delta="+1"
-            positive
-            icon={Target}
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* Charts / sections */}
-      <motion.div
-        className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6"
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.div variants={cardVariants}>
-          <Card title="Weekly Habit Streaks" subtitle="Last 7 days">
-            <div className="h-48 rounded-md bg-gray-100 flex items-center justify-center text-gray-500">
-              <BarChart3 className="mr-2" size={18} /> Placeholder chart
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={cardVariants}>
-          <Card title="Recent Activity" subtitle="Most recent updates">
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center justify-between">
-                <span>Completed “Drink Water”</span>
-                <span className="text-gray-500">2m ago</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span>Marked “Write Journal” as skipped</span>
-                <span className="text-gray-500">1h ago</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span>Created goal “Read 10 books”</span>
-                <span className="text-gray-500">Yesterday</span>
-              </li>
-            </ul>
-          </Card>
-        </motion.div>
-      </motion.div>
+      {/* Weekly Habit Streaks Chart */}
+      <Card title="Weekly Habit Streaks" subtitle="Current streak by habit">
+        <WeeklyStreaks data={streaks} />
+      </Card>
     </div>
   );
 }
