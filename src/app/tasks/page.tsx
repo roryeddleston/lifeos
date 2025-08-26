@@ -56,11 +56,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
   });
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-x-0 space-y-6">
+      {/* Heading */}
+      <div className="px-0 pt-4">
+        <h2 className="text-2xl font-medium tracking-tight">To-do's</h2>
+      </div>
+
+      {/* Filters */}
       <div>
         <Filters />
       </div>
 
+      {/* Table */}
       <Card className="border-0 !shadow-none">
         <section className="rounded-xl bg-white">
           <div className="p-4">
@@ -69,6 +76,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </section>
       </Card>
 
+      {/* Quick add */}
       <QuickAdd />
     </div>
   );
