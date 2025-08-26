@@ -29,3 +29,17 @@ body {
 html {
   scrollbar-gutter: stable;
 }
+
+/* Hide native clear buttons in search/text inputs */
+.hide-native-clear::-webkit-search-decoration,
+.hide-native-clear::-webkit-search-cancel-button,
+.hide-native-clear::-webkit-search-results-button,
+.hide-native-clear::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+.hide-native-clear::-ms-clear,
+.hide-native-clear::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
