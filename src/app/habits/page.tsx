@@ -105,7 +105,7 @@ export default async function HabitsPage() {
     <div className="p-6 space-y-6">
       {/* 1) Heading */}
       <div className="px-4 pt-4">
-        <h2 className="text-xl font-medium tracking-tight">Habits</h2>
+        <h2 className="text-2xl font-medium tracking-tight">Habits</h2>
       </div>
 
       {/* 2) Charts/Insights */}
