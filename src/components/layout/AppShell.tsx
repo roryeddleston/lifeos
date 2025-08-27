@@ -16,11 +16,9 @@ function MainColumn({
   children: React.ReactNode;
   onOpenMenu: () => void;
 }) {
-  // Read title/action from context and pass to Topbar
   const { title, action } = usePageHeader();
 
   return (
-    // Ensure Topbar and main stack vertically
     <div className="flex-1 min-h-screen flex flex-col">
       <Topbar
         onOpenMenu={onOpenMenu}
@@ -38,14 +36,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 md:flex">
-      {/* Left: desktop sidebar */}
+    <div className="min-h-screen md:flex">
       <Sidebar className="hidden md:block" />
-
-      {/* Mobile drawer */}
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
-
-      {/* Right: column with Topbar + page content */}
       <PageHeaderProvider>
         <MainColumn onOpenMenu={() => setMobileOpen(true)}>
           {children}
