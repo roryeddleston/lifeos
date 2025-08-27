@@ -1,4 +1,3 @@
-// src/components/layout/Topbar.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
+import ThemeToggle from "@/components/theme/ThemeToggle";
 
 function formatLongDate(d = new Date()) {
   return d.toLocaleDateString("en-GB", {
@@ -91,7 +91,7 @@ function WeatherPill() {
 
   return (
     <div
-      className="hidden lg:inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs text-gray-700"
+      className="hidden lg:inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-200"
       title="Local weather"
     >
       <Icon className="h-4 w-4" />
@@ -106,7 +106,7 @@ function QuickAdd() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-full bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black transition"
+        className="inline-flex items-center gap-1 rounded-full bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black transition dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -116,12 +116,12 @@ function QuickAdd() {
       </button>
       {open && (
         <div
-          className="absolute right-0 mt-2 w-40 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+          className="absolute right-0 mt-2 w-40 rounded-xl border border-gray-200 bg-white p-1 shadow-xl dark:border-gray-700 dark:bg-gray-900"
           role="menu"
         >
           <Link
             href="/tasks?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
             role="menuitem"
             onClick={() => setOpen(false)}
           >
@@ -129,7 +129,7 @@ function QuickAdd() {
           </Link>
           <Link
             href="/habits?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
             role="menuitem"
             onClick={() => setOpen(false)}
           >
@@ -137,7 +137,7 @@ function QuickAdd() {
           </Link>
           <Link
             href="/goals?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50"
+            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
             role="menuitem"
             onClick={() => setOpen(false)}
           >
@@ -159,39 +159,40 @@ export default function Topbar({
   const today = formatLongDate();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/70 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-gray-800 dark:bg-black/30 dark:supports-[backdrop-filter]:bg-black/20">
       <div className="mx-auto max-w-6xl px-4 py-3 grid grid-cols-2 gap-3 md:grid-cols-[auto_1fr_auto_auto] md:items-center">
         {/* Title */}
         <div className="col-span-2 md:col-span-1">
-          <h1 className="text-base md:text-lg font-semibold tracking-tight text-gray-900 truncate">
+          <h1 className="text-base md:text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100 truncate">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs md:text-sm text-gray-600 mt-0.5 truncate">
+            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-0.5 truncate">
               {subtitle}
             </p>
           )}
         </div>
 
-        {/* Center: Search (desktop inline; mobile renders icon in component) */}
+        {/* Center: Search */}
         <div className="order-last md:order-none md:justify-self-center">
           <GlobalSearch />
         </div>
 
-        {/* Right: date & weather (hidden on small screens) */}
-        <div className="hidden md:flex items-center gap-3 text-sm text-gray-700">
-          <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/70 px-3 py-1">
+        {/* Right: date & weather (md+) */}
+        <div className="hidden md:flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/70 px-3 py-1 dark:border-gray-700 dark:bg-gray-800/70">
             <CalendarDays className="h-4 w-4" />
             {today}
           </span>
           <WeatherPill />
         </div>
 
-        {/* Far right: actions + avatar */}
+        {/* Far right: actions */}
         <div className="col-span-2 md:col-span-1 flex items-center justify-end gap-2">
+          <ThemeToggle />
           <QuickAdd />
           <div
-            className="h-8 w-8 rounded-full bg-gray-200"
+            className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700"
             aria-label="Account"
           />
         </div>

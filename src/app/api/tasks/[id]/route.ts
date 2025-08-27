@@ -1,38 +1,63 @@
+// app/api/tasks/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
+import { z } from "zod";
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const userId = await getUserId();
-  const body = await req.json().catch(() => ({}));
+// Validate/shape the incoming PATCH body
+const PatchSchema = z.object({
+  title: z.string().min(1).optional(),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
+  dueDate: z.string().datetime().nullable().optional(), // ISO string or null
+  position: z.number().int().optional(),
+});
 
-  const data: any = {};
-  if (typeof body.title === "string") data.title = body.title.trim();
-  if (typeof body.status === "string") data.status = body.status;
-  if (body.dueDate === null) data.dueDate = null;
-  else if (typeof body.dueDate === "string")
-    data.dueDate = new Date(body.dueDate);
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function PATCH(req: Request, { params }: RouteParams) {
+  const { id } = await params; // ⬅️ await the params
+  const json = await req.json();
+  const parsed = PatchSchema.parse(json);
+
+  // Map dueDate ISO -> Date | null for Prisma
+  const data: any = { ...parsed };
+  if ("dueDate" in parsed) {
+    data.dueDate = parsed.dueDate ? new Date(parsed.dueDate) : null;
+  }
 
   const updated = await prisma.task.update({
-    where: { id: params.id },
+    where: { id },
     data,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      dueDate: true,
+      position: true,
+    },
   });
-
-  // guard: ensure task belongs to user (cheap check)
-  if (updated.userId && updated.userId !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   return NextResponse.json(updated);
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
-  await prisma.task.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+export async function DELETE(_req: Request, { params }: RouteParams) {
+  const { id } = await params; // ⬅️ await the params
+  await prisma.task.delete({ where: { id } });
+  return new NextResponse(null, { status: 204 });
+}
+
+// (Optional) If you also support GET on this route:
+export async function GET(_req: Request, { params }: RouteParams) {
+  const { id } = await params;
+  const task = await prisma.task.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      dueDate: true,
+      position: true,
+    },
+  });
+  if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(task);
 }
