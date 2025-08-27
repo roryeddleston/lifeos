@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, Prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import TasksTable from "./TasksTable";
 import QuickAdd from "@/components/tasks/QuickAdd";
@@ -6,12 +6,16 @@ import Filters from "./Filters";
 
 export const dynamic = "force-dynamic";
 
+type AllowedView = "all" | "today" | "week" | "nodate" | "done";
+
 type PageProps = {
-  searchParams?: { view?: string };
+  // In App Router, searchParams is async now — model it as a Promise and await it.
+  searchParams: Promise<{ view?: string }>;
 };
 
 export default async function TasksPage({ searchParams }: PageProps) {
-  const view = (searchParams?.view ?? "all").toLowerCase();
+  const { view: rawView } = await searchParams;
+  const view = (rawView ?? "all").toLowerCase() as AllowedView;
 
   // Build date helpers
   const today = new Date();
@@ -23,12 +27,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
   };
 
   // Base WHERE: exclude DONE by default (except on "done" view)
-  const where: any = {};
-  if (view !== "done") {
-    where.status = { not: "DONE" };
-  } else {
-    where.status = "DONE";
-  }
+  const where: Prisma.TaskWhereInput =
+    view === "done" ? { status: "DONE" } : { status: { not: "DONE" } };
 
   // Additional view-specific filters
   if (view === "today") {
@@ -43,7 +43,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const tasks = await prisma.task.findMany({
     where,
     orderBy: [
-      { dueDate: { sort: "asc", nulls: "last" } as any }, // undated last
+      // keep undated tasks last, then oldest first
+      { dueDate: { sort: "asc", nulls: "last" } as any },
       { createdAt: "asc" },
     ],
     select: {
@@ -59,7 +60,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     <div className="p-6 space-x-0 space-y-6">
       {/* Heading */}
       <div className="px-0 pt-4">
-        <h2 className="text-2xl font-medium tracking-tight">To-do's</h2>
+        <h2 className="text-2xl font-medium tracking-tight">To-do&apos;s</h2>
       </div>
 
       {/* Filters */}
