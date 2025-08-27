@@ -15,7 +15,8 @@ import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 
-function formatLongDate(d = new Date()) {
+/* ---------- date (client-only to avoid hydration mismatch) ---------- */
+function formatShortGB(d = new Date()) {
   return d.toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
@@ -23,18 +24,21 @@ function formatLongDate(d = new Date()) {
   });
 }
 
+/* ---------- weather helpers ---------- */
 type Weather = {
   temp: number | null;
   icon: "sun" | "cloud" | "cloudSun" | "cloudy" | "rain" | null;
 };
+
 function iconForCode(code: number): Weather["icon"] {
-  if ([0].includes(code)) return "sun";
-  if ([1, 2].includes(code)) return "cloudSun";
-  if ([3].includes(code)) return "cloudy";
+  if (code === 0) return "sun";
+  if (code === 1 || code === 2) return "cloudSun";
+  if (code === 3) return "cloudy";
   if ([45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code))
     return "rain";
   return "cloud";
 }
+
 async function getWeather(): Promise<Weather> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve({ temp: null, icon: null });
@@ -59,8 +63,10 @@ async function getWeather(): Promise<Weather> {
   });
 }
 
+/* ---------- subcomponents ---------- */
 function WeatherPill() {
   const [w, setW] = useState<Weather>({ temp: null, icon: null });
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -71,6 +77,7 @@ function WeatherPill() {
       cancelled = true;
     };
   }, []);
+
   const Icon = useMemo(() => {
     switch (w.icon) {
       case "sun":
@@ -89,10 +96,15 @@ function WeatherPill() {
 
   return (
     <div
-      className="hidden lg:inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-200"
+      className="hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs"
+      style={{
+        borderColor: "var(--twc-border)",
+        backgroundColor: "var(--twc-surface)",
+        color: "var(--twc-text)",
+      }}
       title="Local weather"
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4 opacity-80" />
       {w.temp != null ? <span>{Math.round(w.temp)}°C</span> : <span>—</span>}
     </div>
   );
@@ -100,53 +112,63 @@ function WeatherPill() {
 
 function QuickAdd() {
   const [open, setOpen] = useState(false);
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-full bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black transition dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+        className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer hover:opacity-95"
+        style={{
+          // Blue-green brand chip
+          background:
+            "linear-gradient(135deg, var(--twc-accent), color-mix(in oklab, var(--twc-accent) 70%, teal))",
+          color: "white",
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
       >
         <Plus className="h-4 w-4" />
         <span className="hidden sm:inline">New</span>
-        <ChevronDown className="h-4 w-4 opacity-80" />
+        <ChevronDown className="h-4 w-4 opacity-90" />
       </button>
+
       {open && (
         <div
-          className="absolute right-0 mt-2 w-40 rounded-xl border border-gray-200 bg-white p-1 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+          className="absolute right-0 mt-2 w-44 rounded-xl border p-1 shadow-xl"
+          style={{
+            borderColor: "var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+          }}
           role="menu"
         >
-          <Link
-            href="/tasks?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-          >
-            Task
-          </Link>
-          <Link
-            href="/habits?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-          >
-            Habit
-          </Link>
-          <Link
-            href="/goals?quick=new"
-            className="block rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-          >
-            Goal
-          </Link>
+          {["Task", "Habit", "Goal"].map((item) => (
+            <Link
+              key={item}
+              href={`/${item.toLowerCase()}s?quick=new`}
+              className="block rounded-lg px-3 py-2 text-sm transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style={{
+                color: "var(--twc-text)",
+              }}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              {item}
+            </Link>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
+/* ---------- topbar ---------- */
 export default function Topbar({
   title,
   subtitle,
@@ -162,34 +184,47 @@ export default function Topbar({
   primaryActionHref?: string;
   primaryActionLabel?: string;
 }) {
-  // Render date only after mount to avoid hydration mismatch
   const [today, setToday] = useState<string>("");
+
   useEffect(() => {
-    setToday(formatLongDate(new Date()));
+    setToday(formatShortGB(new Date()));
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-gray-800 dark:bg-black/30 dark:supports-[backdrop-filter]:bg-black/20">
-      <div className="mx-auto max-w-6xl px-4 py-3 grid grid-cols-2 gap-3 md:grid-cols-[auto_1fr_auto_auto] md:items-center">
+    <header
+      className="sticky top-0 z-20 border-b backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-black/20"
+      style={{
+        borderColor: "var(--twc-border)",
+        backgroundColor: "color-mix(in oklab, var(--twc-bg) 80%, transparent)",
+      }}
+    >
+      <div className="mx-auto max-w-6xl px-4 py-3 grid grid-cols-2 gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
         {/* Center: Search */}
         <div className="order-last md:order-none md:justify-self-center">
           {showSearch && <GlobalSearch />}
         </div>
 
-        {/* Right: date & weather (md+) */}
-        <div className="hidden md:flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
+        {/* Right: date & weather */}
+        <div
+          className="hidden md:flex items-center gap-3 text-sm"
+          style={{ color: "var(--twc-text)" }}
+        >
           <span
-            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/70 px-3 py-1 dark:border-gray-700 dark:bg-gray-800/70"
+            className="inline-flex items-center gap-1 rounded-full border px-3 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{
+              borderColor: "var(--twc-border)",
+              backgroundColor: "var(--twc-surface)",
+              color: "var(--twc-text)",
+            }}
             suppressHydrationWarning
           >
-            <CalendarDays className="h-4 w-4" />
-            {/* show a non-breaking space until mounted to keep pill height stable */}
+            <CalendarDays className="h-4 w-4 opacity-80" />
             {today || "\u00A0"}
           </span>
           <WeatherPill />
         </div>
 
-        {/* Far right: actions */}
+        {/* Actions */}
         <div className="col-span-2 md:col-span-1 flex items-center justify-end gap-2">
           <ThemeToggle />
           <QuickAdd />
