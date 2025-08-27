@@ -17,9 +17,9 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 
 function formatLongDate(d = new Date()) {
   return d.toLocaleDateString("en-GB", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
   });
 }
 
@@ -35,7 +35,6 @@ function iconForCode(code: number): Weather["icon"] {
     return "rain";
   return "cloud";
 }
-
 async function getWeather(): Promise<Weather> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve({ temp: null, icon: null });
@@ -72,7 +71,6 @@ function WeatherPill() {
       cancelled = true;
     };
   }, []);
-
   const Icon = useMemo(() => {
     switch (w.icon) {
       case "sun":
@@ -152,37 +150,41 @@ function QuickAdd() {
 export default function Topbar({
   title,
   subtitle,
+  onOpenMenu,
+  showSearch = true,
+  primaryActionHref,
+  primaryActionLabel,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
+  onOpenMenu?: () => void;
+  showSearch?: boolean;
+  primaryActionHref?: string;
+  primaryActionLabel?: string;
 }) {
-  const today = formatLongDate();
+  // Render date only after mount to avoid hydration mismatch
+  const [today, setToday] = useState<string>("");
+  useEffect(() => {
+    setToday(formatLongDate(new Date()));
+  }, []);
 
   return (
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-gray-800 dark:bg-black/30 dark:supports-[backdrop-filter]:bg-black/20">
       <div className="mx-auto max-w-6xl px-4 py-3 grid grid-cols-2 gap-3 md:grid-cols-[auto_1fr_auto_auto] md:items-center">
-        {/* Title */}
-        <div className="col-span-2 md:col-span-1">
-          <h1 className="text-base md:text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100 truncate">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-0.5 truncate">
-              {subtitle}
-            </p>
-          )}
-        </div>
-
         {/* Center: Search */}
         <div className="order-last md:order-none md:justify-self-center">
-          <GlobalSearch />
+          {showSearch && <GlobalSearch />}
         </div>
 
         {/* Right: date & weather (md+) */}
         <div className="hidden md:flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
-          <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/70 px-3 py-1 dark:border-gray-700 dark:bg-gray-800/70">
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/70 px-3 py-1 dark:border-gray-700 dark:bg-gray-800/70"
+            suppressHydrationWarning
+          >
             <CalendarDays className="h-4 w-4" />
-            {today}
+            {/* show a non-breaking space until mounted to keep pill height stable */}
+            {today || "\u00A0"}
           </span>
           <WeatherPill />
         </div>
@@ -191,10 +193,6 @@ export default function Topbar({
         <div className="col-span-2 md:col-span-1 flex items-center justify-end gap-2">
           <ThemeToggle />
           <QuickAdd />
-          <div
-            className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700"
-            aria-label="Account"
-          />
         </div>
       </div>
     </header>
