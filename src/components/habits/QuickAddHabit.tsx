@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
+import Card from "@/components/cards/Card";
 
 export default function QuickAddHabit() {
   const [name, setName] = useState("");
@@ -51,12 +52,21 @@ export default function QuickAddHabit() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New habit…"
-          className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm"
+          className="flex-1 rounded-md px-3 py-2 text-sm"
+          style={{
+            border: "1px solid var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+            color: "var(--twc-text)",
+          }}
           disabled={isPending}
         />
         <button
           type="submit"
-          className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+          className="rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50 transition"
+          style={{
+            backgroundColor: "var(--twc-primary)",
+            color: "var(--twc-primary-contrast)",
+          }}
           disabled={isPending || !name.trim()}
         >
           Add

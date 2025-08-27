@@ -1,4 +1,3 @@
-// src/components/habits/HabitHistory.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -14,7 +13,6 @@ type HistoryPayload = {
 // ISO week key like "2025-W09"
 function isoWeekKey(d = new Date()): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  // Thursday in current week decides the year.
   date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
@@ -27,7 +25,6 @@ export default function HabitHistory({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // fetch once
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -51,7 +48,6 @@ export default function HabitHistory({ id }: { id: string }) {
     };
   }, [id]);
 
-  // ---- derived values (keep hook order stable) ----
   const series = data?.series ?? [];
   const n = series.length;
 
@@ -106,51 +102,112 @@ export default function HabitHistory({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="rounded-md border border-gray-200 bg-white/70 px-2 py-1.5 text-[11px] text-gray-600">
+      <div
+        className="rounded-md px-2 py-1.5 text-[11px]"
+        style={{
+          border: "1px solid var(--twc-border)",
+          backgroundColor:
+            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          color: "var(--twc-muted)",
+        }}
+      >
         Loading history…
       </div>
     );
   }
   if (err) {
     return (
-      <div className="rounded-md border border-gray-200 bg-white/70 px-2 py-1.5 text-[11px] text-red-600">
+      <div
+        className="rounded-md px-2 py-1.5 text-[11px]"
+        style={{
+          border: "1px solid var(--twc-border)",
+          backgroundColor:
+            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          color: "var(--twc-danger)",
+        }}
+      >
         {err}
       </div>
     );
   }
   if (!n) {
     return (
-      <div className="rounded-md border border-gray-200 bg-white/70 px-2 py-1.5 text-[11px] text-gray-500">
+      <div
+        className="rounded-md px-2 py-1.5 text-[11px]"
+        style={{
+          border: "1px solid var(--twc-border)",
+          backgroundColor:
+            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          color: "var(--twc-muted)",
+        }}
+      >
         No history yet.
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white/70 px-3 py-4">
+    <div
+      className="rounded-md px-3 py-4"
+      style={{
+        border: "1px solid var(--twc-border)",
+        backgroundColor: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+      }}
+    >
       {/* header */}
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-[11px] font-medium text-gray-900">History</div>
-        <div className="text-[10px] text-gray-500">
+        <div
+          className="text-[11px] font-medium"
+          style={{ color: "var(--twc-text)" }}
+        >
+          History
+        </div>
+        <div className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
           {n} {n === 1 ? "week" : "weeks"}
         </div>
       </div>
 
       {/* stats row */}
       <div className="mb-4 grid grid-cols-3 gap-2">
-        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
-          <div className="text-[10px] text-gray-600">Last week</div>
-          <div className="text-sm font-semibold text-gray-900">
+        <div
+          className="rounded-[8px] px-2 py-1.5"
+          style={{ border: "1px solid var(--twc-border)" }}
+        >
+          <div className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
+            Last week
+          </div>
+          <div
+            className="text-sm font-semibold"
+            style={{ color: "var(--twc-text)" }}
+          >
             {lastWeekPct}%
           </div>
         </div>
-        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
-          <div className="text-[10px] text-gray-600">Avg (8w)</div>
-          <div className="text-sm font-semibold text-gray-900">{avgPct}%</div>
+        <div
+          className="rounded-[8px] px-2 py-1.5"
+          style={{ border: "1px solid var(--twc-border)" }}
+        >
+          <div className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
+            Avg (8w)
+          </div>
+          <div
+            className="text-sm font-semibold"
+            style={{ color: "var(--twc-text)" }}
+          >
+            {avgPct}%
+          </div>
         </div>
-        <div className="rounded-[8px] border border-gray-200 px-2 py-1.5">
-          <div className="text-[10px] text-gray-600">Best week</div>
-          <div className="text-sm font-semibold text-gray-900">
+        <div
+          className="rounded-[8px] px-2 py-1.5"
+          style={{ border: "1px solid var(--twc-border)" }}
+        >
+          <div className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
+            Best week
+          </div>
+          <div
+            className="text-sm font-semibold"
+            style={{ color: "var(--twc-text)" }}
+          >
             {bestWeekPct}%
           </div>
         </div>
@@ -158,11 +215,16 @@ export default function HabitHistory({ id }: { id: string }) {
 
       {/* legend */}
       <div className="mb-2 flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        <span className="text-[10px] text-gray-600">Weekly completion %</span>
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: "var(--twc-accent)" }}
+        />
+        <span className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
+          Weekly completion %
+        </span>
       </div>
 
-      {/* chart centered with padding */}
+      {/* chart */}
       <div className="flex justify-center py-2">
         <svg
           viewBox={`0 0 ${W} ${H}`}
@@ -181,14 +243,14 @@ export default function HabitHistory({ id }: { id: string }) {
                   y1={yy}
                   x2={W - PR}
                   y2={yy}
-                  stroke="#e5e7eb"
+                  stroke="var(--twc-border)"
                   strokeWidth="1"
                 />
                 <text
                   x={PL - 6}
                   y={yy}
                   fontSize="10"
-                  fill="#6b7280"
+                  fill="var(--twc-muted)"
                   textAnchor="end"
                   dominantBaseline="central"
                 >
@@ -203,14 +265,14 @@ export default function HabitHistory({ id }: { id: string }) {
             y1={y(0)}
             x2={W - PR}
             y2={y(0)}
-            stroke="#e5e7eb"
+            stroke="var(--twc-border)"
             strokeWidth="1"
           />
 
           <path
             d={path}
             fill="none"
-            stroke="#10b981"
+            stroke="var(--twc-accent)"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -222,7 +284,7 @@ export default function HabitHistory({ id }: { id: string }) {
               cx={xs[i]}
               cy={y(pt.pct)}
               r="2.5"
-              fill="#10b981"
+              fill="var(--twc-accent)"
             >
               <title>
                 {pt.week}: {Math.round(pt.pct * 100)}%

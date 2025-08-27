@@ -1,4 +1,3 @@
-// src/app/habits/page.tsx
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
@@ -55,7 +54,11 @@ export default async function HabitsPage() {
     const d = addDays(start, i);
     return {
       iso: toISODate(d),
-      label: d.toLocaleDateString("en-GB", { weekday: "short" }), // Mon, Tue…
+      // UTC to avoid any server/client timezone mismatch
+      label: d.toLocaleDateString("en-GB", {
+        weekday: "short",
+        timeZone: "UTC",
+      }),
       isToday: d.getTime() === today.getTime(),
     };
   });
@@ -103,27 +106,36 @@ export default async function HabitsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* 1) Heading */}
+      {/* Heading */}
       <div className="px-4 pt-4">
         <h2 className="text-2xl font-medium tracking-tight">Habits</h2>
       </div>
 
-      {/* 2) Charts/Insights */}
+      {/* Charts/Insights */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Completion Summary */}
         <Card className="p-4">
-          <h3 className="text-sm font-medium text-gray-900">This Week</h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <h3 className="text-sm font-medium">This Week</h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Overall completion across all habits
           </p>
           <div className="mt-4">
-            <div className="h-2 w-full rounded-full bg-gray-100">
+            <div
+              className="h-2 w-full rounded-full"
+              style={{
+                backgroundColor:
+                  "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
+              }}
+            >
               <div
-                className="h-2 rounded-full bg-emerald-500"
-                style={{ width: `${completionPct}%` }}
+                className="h-2 rounded-full"
+                style={{
+                  width: `${completionPct}%`,
+                  backgroundColor: "var(--twc-accent)",
+                }}
               />
             </div>
-            <div className="mt-2 text-xs text-gray-600">
+            <div className="mt-2 text-xs" style={{ color: "var(--twc-muted)" }}>
               {completionPct}% complete
               {totalCells > 0 && (
                 <>
@@ -137,20 +149,36 @@ export default async function HabitsPage() {
 
         {/* Streaks */}
         <Card className="p-4">
-          <h3 className="text-sm font-medium text-gray-900">Streaks</h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <h3 className="text-sm font-medium">Streaks</h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Best current and best 7-day streaks
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs text-gray-600">Current (max)</div>
-              <div className="mt-1 text-lg font-semibold text-gray-900">
+            <div
+              className="rounded-lg p-3"
+              style={{
+                border: "1px solid var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+              }}
+            >
+              <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
+                Current (max)
+              </div>
+              <div className="mt-1 text-lg font-semibold">
                 {currentStreakMax} {currentStreakMax === 1 ? "day" : "days"}
               </div>
             </div>
-            <div className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xs text-gray-600">Best (last 7 days)</div>
-              <div className="mt-1 text-lg font-semibold text-gray-900">
+            <div
+              className="rounded-lg p-3"
+              style={{
+                border: "1px solid var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+              }}
+            >
+              <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
+                Best (last 7 days)
+              </div>
+              <div className="mt-1 text-lg font-semibold">
                 {bestStreakMax} {bestStreakMax === 1 ? "day" : "days"}
               </div>
             </div>
@@ -159,14 +187,14 @@ export default async function HabitsPage() {
 
         {/* Mini Bar Chart */}
         <Card className="p-4">
-          <h3 className="text-sm font-medium text-gray-900">Last 7 Days</h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <h3 className="text-sm font-medium">Last 7 Days</h3>
+          <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Daily total completions across all habits
           </p>
           <div className="mt-4">
             <svg
               viewBox={`0 0 ${7 * (barWidth + gap) - gap} ${chartHeight + 5}`}
-              className="w-full"
+              className="w-full block"
             >
               {/* guide lines */}
               <line
@@ -174,7 +202,7 @@ export default async function HabitsPage() {
                 y1={chartHeight}
                 x2={7 * (barWidth + gap) - gap}
                 y2={chartHeight}
-                stroke="#e5e7eb"
+                stroke="color-mix(in oklab, var(--twc-text) 8%, transparent)"
                 strokeWidth="1"
               />
               <line
@@ -182,7 +210,7 @@ export default async function HabitsPage() {
                 y1={Math.round(chartHeight * 0.5)}
                 x2={7 * (barWidth + gap) - gap}
                 y2={Math.round(chartHeight * 0.5)}
-                stroke="#f1f5f9"
+                stroke="color-mix(in oklab, var(--twc-text) 6%, transparent)"
                 strokeWidth="1"
               />
               <line
@@ -190,7 +218,7 @@ export default async function HabitsPage() {
                 y1={Math.round(chartHeight * 0.15)}
                 x2={7 * (barWidth + gap) - gap}
                 y2={Math.round(chartHeight * 0.15)}
-                stroke="#f8fafc"
+                stroke="color-mix(in oklab, var(--twc-text) 4%, transparent)"
                 strokeWidth="1"
               />
               {perDayCounts.map((count, i) => {
@@ -208,12 +236,15 @@ export default async function HabitsPage() {
                     width={barWidth}
                     height={height}
                     rx="2"
-                    className="fill-emerald-500"
+                    fill="var(--twc-accent)"
                   />
                 );
               })}
             </svg>
-            <div className="mt-2 grid grid-cols-7 text-center text-xs text-gray-600">
+            <div
+              className="mt-2 grid grid-cols-7 text-center text-xs"
+              style={{ color: "var(--twc-muted)" }}
+            >
               {days.map((d) => (
                 <span key={d.iso}>{d.label}</span>
               ))}
@@ -222,9 +253,9 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
-      {/* 3) Weekday header + List (kept together for perfect alignment) */}
-      <Card className="border-0 !shadow-none">
-        {/* Weekday header (must match HabitCard grid exactly) */}
+      {/* ---- Card with weekday header at the TOP + list underneath ---- */}
+      <Card className="p-0">
+        {/* Weekday header INSIDE the card (top) */}
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <div />
           <div className="w-[17rem]">
@@ -233,10 +264,15 @@ export default async function HabitsPage() {
                 <div
                   key={d.iso}
                   className={`w-8 h-5 text-[11px] leading-5 text-center ${
-                    d.isToday ? "text-gray-900 font-medium" : "text-gray-500"
+                    d.isToday ? "font-medium" : ""
                   }`}
                   aria-label={d.iso}
                   title={d.iso}
+                  style={{
+                    color: d.isToday
+                      ? "var(--twc-text)"
+                      : "color-mix(in oklab, var(--twc-text) 45%, transparent)",
+                  }}
                 >
                   {d.label}
                 </div>
@@ -246,22 +282,37 @@ export default async function HabitsPage() {
           <div className="w-8" aria-hidden />
         </div>
 
-        {/* List */}
+        {/* List with faint separators (like tasks table) */}
         {view.length === 0 ? (
           <div className="px-4 py-16">
-            <div className="mx-auto max-w-md rounded-lg border bg-white/70 px-6 py-8 text-center">
-              <h3 className="text-sm font-medium text-gray-900">
-                No habits yet
-              </h3>
-              <p className="mt-2 text-sm text-gray-600">
+            <div
+              className="mx-auto max-w-md rounded-lg px-6 py-8 text-center"
+              style={{
+                border: "1px solid var(--twc-border)",
+                background:
+                  "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+              }}
+            >
+              <h3 className="text-sm font-medium">No habits yet</h3>
+              <p className="mt-2 text-sm" style={{ color: "var(--twc-muted)" }}>
                 Add your first habit below to start building streaks.
               </p>
             </div>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
-            {view.map((h) => (
-              <li key={h.id} className="px-4 py-3">
+          <ul>
+            {view.map((h, i) => (
+              <li
+                key={h.id}
+                className="px-4 py-3"
+                style={{
+                  borderBottom:
+                    i === view.length - 1
+                      ? "0"
+                      : // lighter, table-like divider
+                        "1px solid color-mix(in oklab, var(--twc-border) 40%, transparent)",
+                }}
+              >
                 <HabitCard habit={h} />
               </li>
             ))}

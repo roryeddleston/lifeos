@@ -96,15 +96,23 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
 
   return (
     <div className="space-y-2">
-      {/* Top row — DO NOT change grid definition */}
+      {/* Original 3-column grid (name / 7-day strip / delete) */}
       <div className="grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-center gap-4">
         {/* Left: name + streak + history toggle (flexible) */}
         <div className="min-w-0 flex items-center gap-2">
           <InlineHabitName id={habit.id} name={habit.name} />
+
           {habit.streak >= 2 && (
             <span
-              className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
               title={`${habit.streak} day streak`}
+              style={{
+                // soft chip that respects theme
+                backgroundColor:
+                  "color-mix(in oklab, var(--twc-accent) 12%, var(--twc-surface))",
+                color: "var(--twc-text)",
+                border: "1px solid var(--twc-border)",
+              }}
             >
               {habit.streak} day streak
             </span>
@@ -114,8 +122,13 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="ml-1 inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
+            className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition"
             title="Show history"
+            style={{
+              border: "1px solid var(--twc-border)",
+              backgroundColor: "var(--twc-surface)",
+              color: "var(--twc-text)",
+            }}
           >
             {showHistory ? (
               <ChevronUp className="h-3.5 w-3.5" />
@@ -137,14 +150,22 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                   key={d.iso}
                   type="button"
                   onClick={() => toggleDay(d.iso, !d.completed)}
-                  className={[
-                    "group relative inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
-                    "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-gray-300",
-                    active
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-gray-200 bg-white hover:bg-gray-50",
-                    isToday ? "ring-1 ring-gray-300" : "",
-                  ].join(" ")}
+                  className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
+                  style={{
+                    // inactive: neutral surface; active: slight accent tint
+                    border: `1px solid ${
+                      active
+                        ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
+                        : "var(--twc-border)"
+                    }`,
+                    backgroundColor: active
+                      ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
+                      : "var(--twc-surface)",
+                    // keep today hint but subtle
+                    boxShadow: isToday
+                      ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
+                      : undefined,
+                  }}
                   aria-pressed={active}
                   aria-label={`${d.iso} ${
                     active ? "completed" : "not completed"
@@ -153,12 +174,24 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                   disabled={isPending}
                 >
                   {active ? (
-                    <Check className="h-4 w-4 text-emerald-600 transition-transform group-active:scale-95" />
+                    <Check
+                      className="h-4 w-4"
+                      style={{ color: "var(--twc-accent)" }}
+                    />
                   ) : (
-                    <span className="h-1.5 w-1.5 rounded-full bg-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ backgroundColor: "var(--twc-border)" }}
+                    />
                   )}
                   {isToday && (
-                    <span className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full bg-gray-400/70" />
+                    <span
+                      className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          "color-mix(in oklab, var(--twc-text) 35%, transparent)",
+                      }}
+                    />
                   )}
                 </button>
               );
@@ -172,9 +205,14 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition active:scale-[0.98] disabled:opacity-50"
             aria-label="Delete habit"
             title="Delete habit"
+            style={{
+              color: "var(--twc-danger)",
+              border: "1px solid var(--twc-border)",
+              backgroundColor: "var(--twc-surface)",
+            }}
           >
             <Trash2 className="h-4 w-4" />
           </button>

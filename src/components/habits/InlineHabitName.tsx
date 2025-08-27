@@ -1,4 +1,3 @@
-// src/components/habits/InlineHabitName.tsx
 "use client";
 
 import { useState, useTransition } from "react";
@@ -50,9 +49,7 @@ export default function InlineHabitName({
     }
   }
 
-  // CSS-only first-letter capitalization (not each word)
-  const firstLetterCap =
-    "truncate text-left text-sm text-gray-900 [&::first-letter]:uppercase";
+  const base = "truncate text-left text-sm [&::first-letter]:uppercase";
 
   if (editing) {
     return (
@@ -69,7 +66,14 @@ export default function InlineHabitName({
           }
         }}
         disabled={isPending}
-        className={`w-full max-w-xs rounded-md border border-transparent px-1 py-0.5 ${firstLetterCap} focus:border-gray-300 focus:outline-none`}
+        className={`${base} w-full max-w-xs rounded-md border px-1 py-0.5 focus:outline-none`}
+        style={{
+          borderColor: "transparent",
+          color: "var(--twc-text)",
+          backgroundColor: "var(--twc-surface)",
+          boxShadow:
+            "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 12%, transparent)",
+        }}
         autoCapitalize="sentences"
         spellCheck={false}
       />
@@ -80,8 +84,9 @@ export default function InlineHabitName({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className={`w-full max-w-xs hover:underline ${firstLetterCap}`}
+      className={`${base} hover:underline`}
       title="Rename habit"
+      style={{ color: "var(--twc-text)" }}
     >
       {value}
     </button>

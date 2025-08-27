@@ -1,72 +1,102 @@
-// src/components/habits/HabitsInsights.tsx
 "use client";
 
 import Card from "@/components/cards/Card";
 
 export default function HabitsInsights() {
-  // Purely dummy / static content for visual comparison
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {/* Completion Summary */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-900">This Week</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3
+          className="text-sm font-medium"
+          style={{ color: "var(--twc-text)" }}
+        >
+          This Week
+        </h3>
+        <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
           Dummy data: overall completion rate
         </p>
-
-        {/* Fake progress bar */}
         <div className="mt-4">
-          <div className="h-2 w-full rounded-full bg-gray-100">
+          <div
+            className="h-2 w-full rounded-full"
+            style={{
+              backgroundColor:
+                "color-mix(in oklab, var(--twc-text) 10%, var(--twc-surface))",
+            }}
+          >
             <div
-              className="h-2 rounded-full bg-emerald-500"
-              style={{ width: "68%" }}
+              className="h-2 rounded-full"
+              style={{ width: "68%", backgroundColor: "var(--twc-accent)" }}
               aria-label="68% completion"
               title="68% completion"
             />
           </div>
-          <div className="mt-2 text-xs text-gray-600">68% complete</div>
+          <div className="mt-2 text-xs" style={{ color: "var(--twc-muted)" }}>
+            68% complete
+          </div>
         </div>
       </Card>
 
-      {/* Streaks */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-900">Streaks</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3
+          className="text-sm font-medium"
+          style={{ color: "var(--twc-text)" }}
+        >
+          Streaks
+        </h3>
+        <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
           Dummy data: current & best streaks
         </p>
-
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-gray-200 p-3">
-            <div className="text-xs text-gray-600">Current</div>
-            <div className="mt-1 text-lg font-semibold text-gray-900">
+          <div
+            className="rounded-lg p-3"
+            style={{ border: "1px solid var(--twc-border)" }}
+          >
+            <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
+              Current
+            </div>
+            <div
+              className="mt-1 text-lg font-semibold"
+              style={{ color: "var(--twc-text)" }}
+            >
               4 days
             </div>
           </div>
-          <div className="rounded-lg border border-gray-200 p-3">
-            <div className="text-xs text-gray-600">Best</div>
-            <div className="mt-1 text-lg font-semibold text-gray-900">
+          <div
+            className="rounded-lg p-3"
+            style={{ border: "1px solid var(--twc-border)" }}
+          >
+            <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
+              Best
+            </div>
+            <div
+              className="mt-1 text-lg font-semibold"
+              style={{ color: "var(--twc-text)" }}
+            >
               9 days
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Mini Bar Chart (inline SVG, just for looks) */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-900">Last 7 Days</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3
+          className="text-sm font-medium"
+          style={{ color: "var(--twc-text)" }}
+        >
+          Last 7 Days
+        </h3>
+        <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
           Dummy spark bars (not connected to data)
         </p>
 
         <div className="mt-4">
           <svg viewBox="0 0 140 40" className="w-full">
-            {/* background grid lines */}
             <line
               x1="0"
               y1="35"
               x2="140"
               y2="35"
-              stroke="#e5e7eb"
+              stroke="var(--twc-border)"
               strokeWidth="1"
             />
             <line
@@ -74,7 +104,7 @@ export default function HabitsInsights() {
               y1="20"
               x2="140"
               y2="20"
-              stroke="#f1f5f9"
+              stroke="color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))"
               strokeWidth="1"
             />
             <line
@@ -82,11 +112,9 @@ export default function HabitsInsights() {
               y1="5"
               x2="140"
               y2="5"
-              stroke="#f8fafc"
+              stroke="color-mix(in oklab, var(--twc-text) 3%, var(--twc-surface))"
               strokeWidth="1"
             />
-
-            {/* 7 bars */}
             {([18, 30, 12, 26, 35, 22, 28] as number[]).map((h, i) => {
               const barWidth = 12;
               const gap = 8;
@@ -100,12 +128,15 @@ export default function HabitsInsights() {
                   width={barWidth}
                   height={h}
                   rx="2"
-                  className="fill-emerald-500"
+                  fill="var(--twc-accent)"
                 />
               );
             })}
           </svg>
-          <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+          <div
+            className="mt-2 flex items-center justify-between text-xs"
+            style={{ color: "var(--twc-muted)" }}
+          >
             <span>Mon</span>
             <span>Tue</span>
             <span>Wed</span>
@@ -113,16 +144,20 @@ export default function HabitsInsights() {
             <span>Fri</span>
             <span>Sat</span>
             <span>Sun</span>
-          </div>
+          </h3>
         </div>
       </Card>
 
-      {/* Notes / Text Block */}
       <Card className="p-4 lg:col-span-3">
-        <h3 className="text-sm font-medium text-gray-900">Notes</h3>
-        <p className="mt-1 text-sm text-gray-600">
-          This is placeholder text so you can compare layouts with the earlier
-          version. None of the numbers or visuals above are wired to real data.
+        <h3
+          className="text-sm font-medium"
+          style={{ color: "var(--twc-text)" }}
+        >
+          Notes
+        </h3>
+        <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
+          Placeholder text for layout comparison. None of the visuals above are
+          wired to data.
         </p>
       </Card>
     </div>
