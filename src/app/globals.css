@@ -43,3 +43,25 @@ html {
   width: 0;
   height: 0;
 }
+
+:root {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --text: #0f172a;
+  --border: #e5e7eb;
+  --accent: #10b981;
+}
+.dark {
+  --bg: #0b0f1a;
+  --card: #0f1422;
+  --muted: #9aa4b2;
+  --text: #e5e7eb;
+  --border: #1f2937;
+  --accent: #34d399;
+}
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
