@@ -7,43 +7,65 @@
   --muted: #6b7280;
   --text: #0f172a;
   --border: #e5e7eb;
-  --accent: #10b981;
 
-  /* optional: semantic/action tokens for consistency */
+  /* accent: teal/blue */
+  --accent: #14b8a6; /* teal-500 */
+  --accent-contrast: #053237;
+
+  /* semantic tokens */
   --primary: #0f172a;
   --primary-contrast: #ffffff;
-  --accent-contrast: #062d28;
+
+  --success: #10b981; /* emerald-500 */
+  --success-contrast: #ffffff;
+
+  --danger: #ef4444; /* red-500 */
+  --danger-contrast: #ffffff;
 }
 
-/* Dark theme (via .dark on <html> or <body>) */
+/* Dark theme */
 .dark {
   --bg: #0b0f1a;
   --card: #0f1422;
   --muted: #9aa4b2;
   --text: #e5e7eb;
   --border: #1f2937;
-  --accent: #34d399;
+
+  --accent: #06b6d4; /* cyan-500 */
+  --accent-contrast: #04212a;
 
   --primary: #e5e7eb;
   --primary-contrast: #0b0f1a;
-  --accent-contrast: #062d28;
+
+  --success: #34d399; /* emerald-400 */
+  --success-contrast: #0b0f1a;
+
+  --danger: #f87171; /* red-400 */
+  --danger-contrast: #0b0f1a;
 }
 
-/* Optional: Navy theme (use data-theme="navy" on <html>) */
+/* Navy theme */
 [data-theme="navy"] {
-  --bg: #0b1220; /* page background */
-  --card: #0e172a; /* surfaces/cards */
-  --muted: #8fa3bf; /* secondary text */
-  --text: #e6eefb; /* primary text */
-  --border: #1e2a3d; /* borders */
-  --accent: #11b5e5; /* teal/cyan accent */
+  --bg: #0b1220;
+  --card: #0e172a;
+  --muted: #8fa3bf;
+  --text: #e6eefb;
+  --border: #1e2a3d;
 
-  --primary: #0b5ed7; /* brand primary */
-  --primary-contrast: #ffffff;
+  --accent: #11b5e5; /* cyan/teal */
   --accent-contrast: #04212a;
+
+  --primary: #0b5ed7;
+  --primary-contrast: #ffffff;
+
+  --success: #22d3ee; /* cyan-400 */
+  --success-contrast: #0b1220;
+
+  --danger: #f87171; /* soft red */
+  --danger-contrast: #0b1220;
 }
 
-/* Map tokens to generic UI vars you can reference in styles if needed */
+/* Map tokens */
 :root,
 .dark,
 [data-theme="navy"] {
@@ -56,23 +78,25 @@
   --twc-primary-contrast: var(--primary-contrast);
   --twc-accent: var(--accent);
   --twc-accent-contrast: var(--accent-contrast);
+  --twc-success: var(--success);
+  --twc-success-contrast: var(--success-contrast);
+  --twc-danger: var(--danger);
+  --twc-danger-contrast: var(--danger-contrast);
 }
 
-/* Apply vars globally */
+/* Globals */
 html,
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: theme("font.sans"); /* use Tailwind's configured sans font */
+  font-family: theme("font.sans");
   min-height: 100%;
 }
 
-/* Reserve vertical scrollbar space to avoid layout shift */
 html {
   scrollbar-gutter: stable;
 }
 
-/* Hide native clear buttons in search/text inputs */
 .hide-native-clear::-webkit-search-decoration,
 .hide-native-clear::-webkit-search-cancel-button,
 .hide-native-clear::-webkit-search-results-button,
@@ -86,7 +110,6 @@ html {
   height: 0;
 }
 
-/* (Optional) a handy card helper that respects theme tokens */
 .card-surface {
   background-color: var(--twc-surface);
   border: 1px solid var(--twc-border);
