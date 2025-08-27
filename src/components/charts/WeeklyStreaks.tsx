@@ -27,7 +27,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
   const rightPad = 40; // room for value labels
   const innerPad = 8; // gap between name col and chart
 
-  // ⬇️ More breathing room above the chart so labels never clip
+  // More breathing room above the chart so labels never clip
   const topPad = 28;
   const bottomPad = 14;
 
@@ -35,11 +35,24 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
   const chartWidth = width - nameColWidth - rightPad - innerPad;
   const height = topPad + bottomPad + rows.length * rowHeight;
 
+  // Theme-aware colors
+  const text = "var(--twc-text)";
+  const muted = "color-mix(in oklab, var(--twc-text) 60%, transparent)";
+  const extraMuted = "color-mix(in oklab, var(--twc-text) 45%, transparent)";
+  const grid = "color-mix(in oklab, var(--twc-text) 10%, transparent)";
+  const gridLight = "color-mix(in oklab, var(--twc-text) 6%, transparent)";
+  const track = "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
+  const surface = "var(--twc-surface)";
+  const border = "var(--twc-border)";
+  const accent = "var(--twc-accent)"; // blue-green brand color 💙💚
+
   return (
     <div className="w-full overflow-x-auto">
       <div className="mx-auto pt-10" style={{ maxWidth: width }}>
         {rows.length === 0 ? (
-          <div className="text-sm text-gray-500">No habits yet.</div>
+          <div className="text-sm" style={{ color: muted }}>
+            No habits yet.
+          </div>
         ) : (
           <svg
             viewBox={`0 0 ${width} ${height}`}
@@ -49,13 +62,14 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
             role="img"
             aria-label="Current streak by habit (horizontal bars)"
           >
-            {/* subtle background */}
+            {/* subtle background card-like surface */}
             <rect
               x="0"
               y="0"
               width={width}
               height={height}
-              fill="white"
+              fill={surface}
+              stroke={border}
               rx="8"
             />
 
@@ -63,7 +77,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
             {rows.map((r, idx) => {
               const y = topPad + idx * rowHeight;
               const trackH = 10;
-              const barH = 15; // your change kept
+              const barH = 15;
               const trackY = (rowHeight - trackH) / 2;
               const barY = (rowHeight - barH) / 2;
               const barW = Math.round((r.streak / safeMax) * chartWidth);
@@ -75,7 +89,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     x={12}
                     y={rowHeight / 2}
                     fontSize="12"
-                    fill="#111827"
+                    fill={text}
                     dominantBaseline="middle"
                   >
                     {r.name}
@@ -88,7 +102,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     width={chartWidth}
                     height={trackH}
                     rx={6}
-                    fill="#f3f4f6"
+                    fill={track}
                   />
 
                   {/* value bar */}
@@ -98,7 +112,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     width={barW}
                     height={barH}
                     rx={6}
-                    className="fill-emerald-500"
+                    fill={accent}
                   />
 
                   {/* value label */}
@@ -106,7 +120,7 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     x={nameColWidth + innerPad + barW + 8}
                     y={rowHeight / 2}
                     fontSize="12"
-                    fill="#374151"
+                    fill={muted}
                     dominantBaseline="middle"
                   >
                     {r.streak} {r.streak === 1 ? "day" : "days"}
@@ -118,13 +132,13 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     x2={width}
                     y1={rowHeight - 0.5}
                     y2={rowHeight - 0.5}
-                    stroke="#f3f4f6"
+                    stroke={grid}
                   />
                 </g>
               );
             })}
 
-            {/* X-axis ticks (0, 25%, 50%, 75%, max) — labels are now safely INSIDE */}
+            {/* X-axis ticks (0, 25%, 50%, 75%, max) */}
             {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
               const x = nameColWidth + innerPad + Math.round(p * chartWidth);
               const label =
@@ -136,13 +150,13 @@ export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
                     y1={topPad}
                     x2={x}
                     y2={height - bottomPad}
-                    stroke="#f5f5f5"
+                    stroke={gridLight}
                   />
                   <text
                     x={x}
-                    y={topPad - 10} // always ≥ 0 thanks to bigger topPad
+                    y={topPad - 10}
                     fontSize="10"
-                    fill="#6b7280"
+                    fill={extraMuted}
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >

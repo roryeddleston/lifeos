@@ -68,7 +68,6 @@ export default function DashboardClient({
           <StatCard
             label="Open tasks"
             value={stats.tasksOpen}
-            // no reliable delta for “open tasks” without completion timestamps
             delta=""
             positive={true}
             icon={ListTodo}
@@ -95,8 +94,16 @@ export default function DashboardClient({
       >
         <motion.div variants={cardVariants}>
           <Card title="Weekly Habit Streaks" subtitle="Last 7 days">
-            <div className="h-48 rounded-md bg-gray-100 flex items-center justify-center text-gray-500">
-              <BarChart3 className="mr-2" size={18} /> Placeholder chart
+            <div
+              className="h-48 rounded-md flex items-center justify-center"
+              style={{
+                border: "1px solid var(--twc-border)",
+                background:
+                  "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
+                color: "color-mix(in oklab, var(--twc-text) 60%, transparent)",
+              }}
+            >
+              <BarChart3 size={18} className="mr-2" /> Placeholder chart
             </div>
           </Card>
         </motion.div>
@@ -104,13 +111,22 @@ export default function DashboardClient({
         <motion.div variants={cardVariants}>
           <Card title="Recent Activity" subtitle="Most recent updates">
             {activity.length === 0 ? (
-              <div className="text-sm text-gray-500">No recent activity</div>
+              <div className="text-sm" style={{ color: "var(--twc-muted)" }}>
+                No recent activity
+              </div>
             ) : (
               <ul className="space-y-2 text-sm">
                 {activity.map((a, i) => (
                   <li key={i} className="flex items-center justify-between">
-                    <span>{a.text}</span>
-                    <span className="text-gray-500">{a.when}</span>
+                    <span style={{ color: "var(--twc-text)" }}>{a.text}</span>
+                    <span
+                      style={{
+                        color:
+                          "color-mix(in oklab, var(--twc-text) 55%, transparent)",
+                      }}
+                    >
+                      {a.when}
+                    </span>
                   </li>
                 ))}
               </ul>

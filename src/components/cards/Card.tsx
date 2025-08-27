@@ -16,12 +16,28 @@ export default function Card({
 }: CardProps) {
   return (
     <section
-      className={`rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow ${className}`}
+      className={`rounded-xl shadow-sm transition-shadow hover:shadow ${className}`}
+      // Use theme tokens instead of fixed Tailwind colors
+      style={{
+        backgroundColor: "var(--twc-surface)",
+        border: "1px solid var(--twc-border)",
+      }}
     >
       {(title || subtitle) && (
         <header className="px-4 pt-4">
-          {title && <h3 className="text-sm font-semibold">{title}</h3>}
-          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+          {title && (
+            <h3
+              className="text-sm font-semibold"
+              style={{ color: "var(--twc-text)" }}
+            >
+              {title}
+            </h3>
+          )}
+          {subtitle && (
+            <p className="mt-1 text-xs" style={{ color: "var(--twc-muted)" }}>
+              {subtitle}
+            </p>
+          )}
         </header>
       )}
 
@@ -30,7 +46,10 @@ export default function Card({
       </div>
 
       {footer && (
-        <footer className="px-4 pb-4 pt-0 text-xs text-gray-500">
+        <footer
+          className="px-4 pb-4 pt-0 text-xs"
+          style={{ color: "var(--twc-muted)" }}
+        >
           {footer}
         </footer>
       )}
