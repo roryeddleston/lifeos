@@ -18,12 +18,21 @@ type Task = {
   status: string;
 };
 
+function todayLocalISO(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD in local time
+}
+
 export default function QuickAdd() {
   const router = useRouter();
   const toast = useToast();
 
   const [value, setValue] = useState("");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Default to today 👇
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    todayLocalISO()
+  );
   const [submitting, setSubmitting] = useState(false);
   const [optimistic, addOptimistic] = useOptimistic<Task[]>(
     [],
@@ -54,7 +63,6 @@ export default function QuickAdd() {
         )
         .replace(/\s{2,}/g, " ")
         .trim();
-      // Capitalise first letter for consistency
       const title =
         cleaned.length > 0
           ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
@@ -67,7 +75,7 @@ export default function QuickAdd() {
     const tasksPayload = toPayload(lines);
     if (tasksPayload.length === 0) return;
 
-    // Optimistic placeholders (not shown in list, only here)
+    // Optimistic placeholders (local only)
     const optimisticTasks: Task[] = tasksPayload.map((t) => ({
       id: crypto.randomUUID(),
       title: t.title,
@@ -95,10 +103,11 @@ export default function QuickAdd() {
         return;
       }
 
-      // Revalidate list and re-focus
       startTransition(() => router.refresh());
       setValue("");
-      setSelectedDate(null);
+      // Keep default at today after submit
+      setSelectedDate(todayLocalISO());
+
       // Preserve focus—run on next frame to avoid blurring
       requestAnimationFrame(() => {
         requestAnimationFrame(() => inputRef.current?.focus());
@@ -135,7 +144,13 @@ export default function QuickAdd() {
   };
 
   return (
-    <div className="rounded-xl bg-white p-3 space-y-3">
+    <div
+      className="rounded-xl p-3 space-y-3"
+      style={{
+        border: "1px solid var(--twc-border)",
+        backgroundColor: "var(--twc-surface)",
+      }}
+    >
       <textarea
         id="quickadd"
         ref={inputRef}
@@ -143,11 +158,16 @@ export default function QuickAdd() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Type a task and hit enter"
-        className="w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-900/10"
+        placeholder="Type a task and hit Enter (⌘/Ctrl+Enter for multi-line)"
+        className="w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
         rows={3}
         disabled={submitting}
         aria-label="Task title"
+        style={{
+          borderColor: "var(--twc-border)",
+          backgroundColor: "var(--twc-surface)",
+          color: "var(--twc-text)",
+        }}
       />
 
       <div className="flex items-center justify-between">
@@ -155,9 +175,14 @@ export default function QuickAdd() {
           type="date"
           value={selectedDate ?? ""}
           onChange={(e) => setSelectedDate(e.target.value || null)}
-          className="rounded-md border px-2 py-1 text-sm cursor-pointer hover:bg-gray-50"
+          className="rounded-md border px-2 py-1 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
           aria-label="Due date (optional)"
           title="Due date (optional)"
+          style={{
+            borderColor: "var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+            color: "var(--twc-text)",
+          }}
         />
 
         <button
@@ -166,8 +191,12 @@ export default function QuickAdd() {
             if (text) createMany(text);
           }}
           disabled={submitting || !value.trim()}
-          className="rounded-md bg-gray-900 text-white px-3 py-1.5 hover:bg-black disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+          className="rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)] disabled:opacity-50"
           aria-label="Add task"
+          style={{
+            backgroundColor: "var(--twc-text)",
+            color: "var(--twc-bg)",
+          }}
         >
           Add
         </button>

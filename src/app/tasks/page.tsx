@@ -1,8 +1,8 @@
 import { prisma, Prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
-import TasksTable from "./TasksTable";
+import TasksTable from "../../components/tasks/TasksTable";
 import QuickAdd from "@/components/tasks/QuickAdd";
-import Filters from "./Filters";
+import Filters from "../../components/tasks/Filters";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +70,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
       {/* Table */}
       <Card className="border-0 !shadow-none">
-        <section className="rounded-xl bg-white">
+        <section
+          className="rounded-xl"
+          style={{
+            backgroundColor: "var(--twc-surface)",
+            border: "1px solid var(--twc-border)",
+          }}
+        >
           <div className="p-4">
             <TasksTable initial={tasks} view={view} />
           </div>
