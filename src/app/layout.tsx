@@ -17,11 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // Allow next-themes to flip a `class` on <html> without hydration warnings
-    <html lang="en" className="h-full" suppressHydrationWarning>
-      <body
-        className={`${montserrat.className} min-h-screen bg-white text-gray-900 dark:bg-[#0b0f1a] dark:text-gray-100`}
-      >
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${montserrat.className} min-h-screen`}>
         <ThemeProvider>
           <ToastProvider>
             <AppShell>{children}</AppShell>
