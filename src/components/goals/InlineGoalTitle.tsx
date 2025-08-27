@@ -72,7 +72,14 @@ export default function InlineGoalTitle({
           }
         }}
         disabled={isPending}
-        className="w-full max-w-xs truncate rounded-md border border-transparent px-1 py-0.5 text-sm focus:border-gray-300 focus:outline-none"
+        className="w-full max-w-xs truncate rounded-md border px-1 py-0.5 text-sm focus:outline-none focus-visible:ring-2"
+        style={{
+          borderColor: "transparent",
+          color: "var(--twc-text)",
+          backgroundColor:
+            "color-mix(in oklab, var(--twc-text) 4%, var(--twc-surface))",
+          boxShadow: "inset 0 0 0 1px var(--twc-border)",
+        }}
         spellCheck={false}
       />
     );
@@ -82,7 +89,8 @@ export default function InlineGoalTitle({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="w-full max-w-xs truncate text-left text-sm text-gray-900 hover:underline"
+      className="w-full max-w-xs truncate text-left text-sm hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
+      style={{ color: "var(--twc-text)" }}
       title="Rename goal"
     >
       {capitalizeFirst(value)}

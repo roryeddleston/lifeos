@@ -62,7 +62,6 @@ export default function GoalCard({ goal }: { goal: Goal }) {
       0,
       Math.min(local.targetValue, local.currentValue + delta)
     );
-    // optimistic
     setLocal((c) => ({ ...c, currentValue: next }));
     patch({ currentValue: next });
   }
@@ -91,20 +90,24 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
       {/* Left: title + meta + progress */}
       <div className="min-w-0">
-        {/* Title */}
         <div className="flex items-center gap-2">
           <InlineGoalTitle
             id={local.id}
             title={local.title}
             onSaved={(t) => setLocal((c) => ({ ...c, title: t }))}
           />
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-[var(--twc-muted)]">
             {local.currentValue}/{local.targetValue} {local.unit}
           </span>
           {local.deadline && (
             <span
-              className="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700"
+              className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[11px]"
               title={formatDateGB(local.deadline)}
+              style={{
+                backgroundColor:
+                  "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
+                color: "var(--twc-text)",
+              }}
             >
               due {formatDueLabel(local.deadline)}
             </span>
@@ -112,10 +115,16 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-2 h-2 w-full rounded-full bg-gray-100">
+        <div
+          className="mt-2 h-2 w-full rounded-full"
+          style={{
+            backgroundColor:
+              "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
+          }}
+        >
           <div
-            className="h-2 rounded-full bg-emerald-500 transition-all"
-            style={{ width: `${pct}%` }}
+            className="h-2 rounded-full transition-all"
+            style={{ width: `${pct}%`, backgroundColor: "var(--twc-accent)" }}
             aria-label="Progress"
           />
         </div>
@@ -127,27 +136,44 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           type="button"
           onClick={() => adjust(-step)}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
+          style={{
+            color: "var(--twc-text)",
+            border: "1px solid var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+          }}
           title={`- ${step}`}
           aria-label="Decrement"
         >
           <Minus className="h-4 w-4" />
         </button>
+
         <button
           type="button"
           onClick={() => adjust(+step)}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
+          style={{
+            color: "var(--twc-text)",
+            border: "1px solid var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+          }}
           title={`+ ${step}`}
           aria-label="Increment"
         >
           <Plus className="h-4 w-4" />
         </button>
+
         <button
           type="button"
           onClick={handleDelete}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 active:scale-[0.98]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-danger)]"
+          style={{
+            color: "var(--twc-danger)",
+            border: "1px solid var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+          }}
           aria-label="Delete goal"
           title="Delete goal"
         >
