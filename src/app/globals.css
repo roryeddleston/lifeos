@@ -8,8 +8,14 @@
   --text: #0f172a;
   --border: #e5e7eb;
   --accent: #10b981;
+
+  /* optional: semantic/action tokens for consistency */
+  --primary: #0f172a;
+  --primary-contrast: #ffffff;
+  --accent-contrast: #062d28;
 }
 
+/* Dark theme (via .dark on <html> or <body>) */
 .dark {
   --bg: #0b0f1a;
   --card: #0f1422;
@@ -17,6 +23,39 @@
   --text: #e5e7eb;
   --border: #1f2937;
   --accent: #34d399;
+
+  --primary: #e5e7eb;
+  --primary-contrast: #0b0f1a;
+  --accent-contrast: #062d28;
+}
+
+/* Optional: Navy theme (use data-theme="navy" on <html>) */
+[data-theme="navy"] {
+  --bg: #0b1220; /* page background */
+  --card: #0e172a; /* surfaces/cards */
+  --muted: #8fa3bf; /* secondary text */
+  --text: #e6eefb; /* primary text */
+  --border: #1e2a3d; /* borders */
+  --accent: #11b5e5; /* teal/cyan accent */
+
+  --primary: #0b5ed7; /* brand primary */
+  --primary-contrast: #ffffff;
+  --accent-contrast: #04212a;
+}
+
+/* Map tokens to generic UI vars you can reference in styles if needed */
+:root,
+.dark,
+[data-theme="navy"] {
+  --twc-bg: var(--bg);
+  --twc-surface: var(--card);
+  --twc-text: var(--text);
+  --twc-muted: var(--muted);
+  --twc-border: var(--border);
+  --twc-primary: var(--primary);
+  --twc-primary-contrast: var(--primary-contrast);
+  --twc-accent: var(--accent);
+  --twc-accent-contrast: var(--accent-contrast);
 }
 
 /* Apply vars globally */
@@ -45,4 +84,10 @@ html {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* (Optional) a handy card helper that respects theme tokens */
+.card-surface {
+  background-color: var(--twc-surface);
+  border: 1px solid var(--twc-border);
 }
