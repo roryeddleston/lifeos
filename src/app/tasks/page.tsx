@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
 type PageProps = {
-  // In App Router, searchParams is async now — model it as a Promise and await it.
   searchParams: Promise<{ view?: string }>;
 };
 
@@ -38,12 +37,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
   } else if (view === "nodate") {
     where.dueDate = null;
   }
-  // 'all' => no extra dueDate filter
 
   const tasks = await prisma.task.findMany({
     where,
     orderBy: [
-      // keep undated tasks last, then oldest first
       { dueDate: { sort: "asc", nulls: "last" } as any },
       { createdAt: "asc" },
     ],
@@ -57,7 +54,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   });
 
   return (
-    <div className="p-6 space-x-0 space-y-6">
+    <div className="space-y-6">
       {/* Heading */}
       <div className="px-0 pt-4">
         <h2 className="text-2xl font-medium tracking-tight">To-do&apos;s</h2>
@@ -74,7 +71,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
           className="rounded-xl"
           style={{
             backgroundColor: "var(--twc-surface)",
-            border: "1px solid var(--twc-border)",
+            // 🚀 removed border so no more double outline
+            border: "none",
           }}
         >
           <div className="p-4">
@@ -83,7 +81,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </section>
       </Card>
 
-      {/* Quick add */}
       <QuickAdd />
     </div>
   );

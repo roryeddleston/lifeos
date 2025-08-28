@@ -15,7 +15,7 @@ export default async function GoalsPage() {
   const completed = goals.filter((g) => g.currentValue >= g.targetValue).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Heading */}
       <div className="px-4 pt-2">
         <h1

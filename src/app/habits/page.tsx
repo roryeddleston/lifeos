@@ -105,7 +105,7 @@ export default async function HabitsPage() {
   const gap = 8;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Heading */}
       <div className="px-4 pt-4">
         <h2 className="text-2xl font-medium tracking-tight">Habits</h2>
@@ -185,7 +185,6 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Mini Bar Chart */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -253,9 +252,7 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
-      {/* ---- Card with weekday header at the TOP + list underneath ---- */}
       <Card className="p-0">
-        {/* Weekday header INSIDE the card (top) */}
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <div />
           <div className="w-[17rem]">
@@ -309,8 +306,7 @@ export default async function HabitsPage() {
                   borderBottom:
                     i === view.length - 1
                       ? "0"
-                      : // lighter, table-like divider
-                        "1px solid color-mix(in oklab, var(--twc-border) 40%, transparent)",
+                      : "1px solid color-mix(in oklab, var(--twc-border) 40%, transparent)",
                 }}
               >
                 <HabitCard habit={h} />
