@@ -1,54 +1,114 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
-import { z } from "zod";
-import type { TaskStatus } from "@prisma/client";
+import { TaskStatus } from "@prisma/client";
 
-// ----- Validation -----
-const TaskInput = z.object({
-  title: z.string().trim().min(1, "Title is required"),
-  // ISO string or null; optional field
-  dueDate: z.string().datetime().nullable().optional(),
-});
+type IncomingTask = { title: string; dueDate?: string | null };
 
-const BodySchema = z.object({
-  tasks: z.array(TaskInput),
-});
+// ---------- Type guards (no `any`) ----------
+function isRecord(u: unknown): u is Record<string, unknown> {
+  return typeof u === "object" && u !== null;
+}
+function isStringArray(u: unknown): u is string[] {
+  return Array.isArray(u) && u.every((x) => typeof x === "string");
+}
+function isIncomingTaskArray(u: unknown): u is IncomingTask[] {
+  return (
+    Array.isArray(u) &&
+    u.every(
+      (t) =>
+        isRecord(t) &&
+        typeof t.title === "string" &&
+        (t.dueDate === undefined ||
+          t.dueDate === null ||
+          typeof t.dueDate === "string")
+    )
+  );
+}
+
+// Normalize any allowed body into IncomingTask[]
+function normalizeToList(body: unknown): IncomingTask[] {
+  if (!isRecord(body)) return [];
+
+  // 1) Single title
+  if (typeof body.title === "string") {
+    return [{ title: body.title }];
+  }
+
+  // 2) Array of titles
+  if (isStringArray(body.titles)) {
+    return body.titles.map((t) => ({ title: t }));
+  }
+
+  // 3) Multiline text block
+  if (typeof body.text === "string") {
+    return body.text
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((t) => ({ title: t }));
+  }
+
+  // 4) Full task objects
+  if (isIncomingTaskArray(body.tasks)) {
+    return body.tasks.map((t) => ({
+      title: t.title,
+      dueDate: t.dueDate ?? null,
+    }));
+  }
+
+  return [];
+}
 
 export async function POST(req: Request) {
-  const userId = await getUserId();
+  // Read the body once as text; try JSON parse, else treat as plain text.
+  const bodyText = await req.text().catch(() => "");
+  let parsed: unknown = null;
+  try {
+    parsed = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    parsed = bodyText ? { text: bodyText } : null;
+  }
+  if (!parsed) {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
 
-  // Parse & validate body safely (no `any`)
-  const json: unknown = await req.json().catch(() => ({}));
-  const parsed = BodySchema.safeParse(json);
+  const incoming = normalizeToList(parsed);
 
-  if (!parsed.success || parsed.data.tasks.length === 0) {
+  // Trim + coerce to DB shape
+  const toCreate = incoming
+    .map(({ title, dueDate }) => ({
+      title: (title ?? "").trim(),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      status: TaskStatus.TODO,
+      position: 0,
+      userId: null, // TODO: replace with real user scoping if you add auth
+    }))
+    .filter((t) => t.title.length > 0);
+
+  if (toCreate.length === 0) {
     return NextResponse.json({ error: "No valid tasks" }, { status: 400 });
   }
 
-  // Get current max position for this user
-  const max = await prisma.task.aggregate({
-    where: { userId },
-    _max: { position: true },
-  });
-
-  // Use const since we don't reassign later
-  const pos = (max._max.position ?? 0) + 1;
-
-  const statusTODO: TaskStatus = "TODO";
-
-  // Build typed create payloads
-  const data = parsed.data.tasks.map((t, i) => ({
-    title: t.title.trim(),
-    status: statusTODO,
-    dueDate: t.dueDate ? new Date(t.dueDate) : null,
-    position: pos + i, // increment position based on index
-    userId,
-  }));
-
+  // Return created rows (createMany doesn't return rows)
   const created = await prisma.$transaction(
-    data.map((d) => prisma.task.create({ data: d }))
+    toCreate.map((data) =>
+      prisma.task.create({
+        data,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          dueDate: true,
+          createdAt: true,
+          position: true,
+          // completedAt stays null for TODO tasks (set when marking DONE)
+        },
+      })
+    )
   );
 
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(
+    { count: created.length, tasks: created },
+    { status: 201 }
+  );
 }

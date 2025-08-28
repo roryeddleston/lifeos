@@ -19,10 +19,32 @@ type Task = {
   status: string;
 };
 
-function todayLocalISO(): string {
+function todayLocalISODate(): string {
+  // returns YYYY-MM-DD in local time
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD in local time
+  return d.toISOString().slice(0, 10);
+}
+
+/** Coerce 'YYYY-MM-DD' (or already-ISO) into full ISO datetime string */
+function toFullISOStringOrNull(
+  dateLike: string | null | undefined
+): string | null {
+  if (!dateLike) return null;
+  const s = dateLike.trim();
+  if (!s) return null;
+  // If already a parseable ISO, keep it
+  const parsed = Date.parse(s);
+  if (!Number.isNaN(parsed) && /t/i.test(s)) {
+    return new Date(parsed).toISOString();
+  }
+  // If YYYY-MM-DD, make it midnight UTC
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return new Date(`${s}T00:00:00.000Z`).toISOString();
+  }
+  // Last resort: try Date(...)
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 export default function QuickAdd() {
@@ -31,7 +53,7 @@ export default function QuickAdd() {
 
   const [value, setValue] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(
-    todayLocalISO()
+    todayLocalISODate()
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,8 +75,12 @@ export default function QuickAdd() {
 
   function toPayload(lines: string) {
     return splitLines(lines).map((line) => {
-      const parsedISO = parseQuickDate(line);
-      const iso = parsedISO ?? selectedDate ?? null;
+      // parseQuickDate may return YYYY-MM-DD; normalize to full ISO
+      const parsed = parseQuickDate(line); // e.g. "2025-09-03" or undefined
+      const chosen = parsed ?? selectedDate ?? null;
+      const dueISO = toFullISOStringOrNull(chosen);
+
+      // Strip date tokens from title (keep your patterns)
       const cleaned = line
         .replace(
           /\b(today|tomorrow|sun|mon|tue|wed|thu|fri|sat|in\s+\d+\s+days?)\b/gi,
@@ -66,12 +92,13 @@ export default function QuickAdd() {
         cleaned.length > 0
           ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
           : cleaned;
-      return { title: title || line, dueDate: iso };
+
+      return { title: title || line, dueDate: dueISO };
     });
   }
 
   async function createMany(lines: string) {
-    const tasksPayload = toPayload(lines);
+    const tasksPayload = toPayload(lines).filter((t) => t.title.trim().length);
     if (tasksPayload.length === 0) return;
 
     // Optimistic placeholders (local only)
@@ -80,7 +107,8 @@ export default function QuickAdd() {
         tasksPayload.map((t) => ({
           id: crypto.randomUUID(),
           title: t.title,
-          dueDate: t.dueDate ?? null,
+          // keep UI-friendly YYYY-MM-DD for optimistic display if you like
+          dueDate: selectedDate ?? null,
           status: "TODO",
         }))
       )
@@ -88,26 +116,42 @@ export default function QuickAdd() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/tasks/bulk", {
+      // 1) Primary attempt: send { tasks } with normalized ISO datetimes
+      let res = await fetch("/api/tasks/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tasks: tasksPayload }),
       });
 
+      // 2) If server still says "No valid tasks", try { text } fallback
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        console.error("POST /api/tasks/bulk failed:", res.status, text);
-        toast({
-          variant: "error",
-          title: "Could not create task(s)",
-          description: `HTTP ${res.status}`,
-        });
-        return;
+        // Try fallback only if the server complained about validity
+        if (/No valid tasks/i.test(text)) {
+          res = await fetch("/api/tasks/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: lines }),
+          });
+        }
+        if (!res.ok) {
+          console.error(
+            "POST /api/tasks/bulk failed:",
+            res.status,
+            text || (await res.text().catch(() => ""))
+          );
+          toast({
+            variant: "error",
+            title: "Could not create task(s)",
+            description: `HTTP ${res.status}`,
+          });
+          return;
+        }
       }
 
       startTransition(() => router.refresh());
       setValue("");
-      setSelectedDate(todayLocalISO());
+      setSelectedDate(todayLocalISODate());
 
       // Preserve focus next frame
       requestAnimationFrame(() => {
@@ -188,7 +232,10 @@ export default function QuickAdd() {
 
         <AddActionButton
           label="Add To-do"
-          onClick={() => {
+          onClick={(e) => {
+            if (e?.currentTarget?.type !== "button") {
+              // no-op; most implementations set type=button already
+            }
             const text = value.trim();
             if (text) createMany(text);
           }}

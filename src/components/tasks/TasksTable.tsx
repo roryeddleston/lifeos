@@ -7,9 +7,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
-  DragOverEvent,
 } from "@dnd-kit/core";
+import type { DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
@@ -40,6 +39,10 @@ export default function TasksTable({
   const [items, setItems] = useState<TaskItem[]>(initial);
   const [overId, setOverId] = useState<string | null>(null);
 
+  // Gate DnD until after mount to avoid hydration ID mismatches
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
   useEffect(() => setItems(initial), [initial]);
 
   const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -47,7 +50,12 @@ export default function TasksTable({
   const handleToggleComplete = (id: string, next: boolean) => {
     setItems((curr) => {
       const updated = curr.map((t) =>
-        t.id === id ? { ...t, status: next ? "DONE" : "TODO" } : t
+        t.id === id
+          ? {
+              ...t,
+              status: (next ? "DONE" : "TODO") as TaskItem["status"],
+            }
+          : t
       );
       if (next && view !== "done") return updated.filter((t) => t.id !== id);
       if (!next && view === "done") return updated.filter((t) => t.id !== id);
@@ -153,6 +161,64 @@ export default function TasksTable({
     });
   }
 
+  // ---------- Static (SSR-safe) Row ----------
+  function StaticRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
+    const isDone = t.status === "DONE";
+    const isOverdue =
+      !!t.dueDate &&
+      new Date(t.dueDate).setHours(0, 0, 0, 0) <
+        new Date(new Date().setHours(0, 0, 0, 0)).getTime() &&
+      !isDone;
+
+    return (
+      <tr
+        key={t.id}
+        className="group"
+        style={{
+          borderBottom: isLast
+            ? "none"
+            : "1px solid color-mix(in oklab, var(--twc-text) 10%, transparent)",
+        }}
+      >
+        {[
+          <td key="drag" className="py-3 pr-2 align-middle w-6">
+            {/* No DnD handle server-side to avoid hydration ID mismatch */}
+            <span
+              aria-hidden
+              className="inline-flex p-1"
+              style={{
+                color: "color-mix(in oklab, var(--twc-text) 60%, transparent)",
+              }}
+            >
+              <GripVertical className="w-4 h-4 opacity-40" />
+            </span>
+          </td>,
+          <td key="chk" className="py-3 pr-2 align-middle w-10">
+            <RowComplete
+              id={t.id}
+              completed={isDone}
+              onToggle={(next) => handleToggleComplete(t.id, next)}
+            />
+          </td>,
+          <td key="title" className="py-3 pr-4 align-middle">
+            <InlineTitle id={t.id} title={cap(t.title)} done={isDone} />
+          </td>,
+          <td
+            key="due"
+            className="py-3 pr-4 align-middle"
+            style={{ color: isOverdue ? "var(--twc-danger)" : undefined }}
+          >
+            <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
+          </td>,
+          <td key="actions" className="py-3 pr-0 text-right align-middle">
+            <RowActions id={t.id} title={t.title} dueDate={t.dueDate} />
+          </td>,
+        ]}
+      </tr>
+    );
+  }
+
+  // ---------- Sortable (client-only) Row ----------
   function SortableRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
     const {
       attributes,
@@ -165,6 +231,10 @@ export default function TasksTable({
       id: t.id,
       animateLayoutChanges: () => false,
     });
+
+    // Adapter to avoid `any` on ref: JSX expects HTMLTableRowElement | null
+    const setRowRef = (node: HTMLTableRowElement | null) =>
+      setNodeRef(node as unknown as HTMLElement | null);
 
     const baseTransform = CSS.Transform.toString(transform);
     const style: React.CSSProperties = {
@@ -190,7 +260,7 @@ export default function TasksTable({
 
     return (
       <tr
-        ref={setNodeRef as any}
+        ref={setRowRef}
         style={{
           ...style,
           outline: isDropTarget
@@ -242,7 +312,15 @@ export default function TasksTable({
     );
   }
 
-  const renderRows = (rows: TaskItem[]) => (
+  const renderRowsStatic = (rows: TaskItem[]) => (
+    <>
+      {rows.map((t, idx) => (
+        <StaticRow key={t.id} t={t} isLast={idx === rows.length - 1} />
+      ))}
+    </>
+  );
+
+  const renderRowsSortable = (rows: TaskItem[]) => (
     <SortableContext
       items={rows.map((r) => r.id)}
       strategy={verticalListSortingStrategy}
@@ -327,29 +405,45 @@ export default function TasksTable({
   return (
     <div className="overflow-x-auto" data-tt="tasks-table-themed-no-row-bg">
       {hasAny ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragOver={onDragOver}
-          onDragCancel={onDragCancel}
-          onDragEnd={onDragEnd}
-        >
-          <table className="w-full text-sm">
-            <Header />
+        <>
+          {/* Static SSR + first paint (no DnD attributes) */}
+          {!hydrated && (
+            <table className="w-full text-sm">
+              <Header />
+              {view !== "all" && <tbody>{renderRowsStatic(items)}</tbody>}
+              {view === "all" &&
+                grouped!.map((sec) => (
+                  <tbody key={sec.key}>
+                    <SectionHeaderRow label={sec.label} />
+                    {renderRowsStatic(sec.rows)}
+                  </tbody>
+                ))}
+            </table>
+          )}
 
-            {view !== "all" && (
-              <tbody>{items.length ? renderRows(items) : null}</tbody>
-            )}
-
-            {view === "all" &&
-              grouped!.map((sec) => (
-                <tbody key={sec.key}>
-                  <SectionHeaderRow label={sec.label} />
-                  {renderRows(sec.rows)}
-                </tbody>
-              ))}
-          </table>
-        </DndContext>
+          {/* Client-only DnD once mounted */}
+          {hydrated && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragOver={onDragOver}
+              onDragCancel={onDragCancel}
+              onDragEnd={onDragEnd}
+            >
+              <table className="w-full text-sm">
+                <Header />
+                {view !== "all" && <tbody>{renderRowsSortable(items)}</tbody>}
+                {view === "all" &&
+                  grouped!.map((sec) => (
+                    <tbody key={sec.key}>
+                      <SectionHeaderRow label={sec.label} />
+                      {renderRowsSortable(sec.rows)}
+                    </tbody>
+                  ))}
+              </table>
+            </DndContext>
+          )}
+        </>
       ) : (
         <EmptyBlock />
       )}
