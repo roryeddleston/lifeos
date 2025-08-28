@@ -45,6 +45,12 @@ model Task {
 
   // per-user data scoping (auth-ready)
   userId      String?
+
+  // true completion timestamp (null until DONE)
+  completedAt DateTime?
+
+  @@index([status, completedAt])
+  @@index([userId, completedAt])
 }
 
 model Goal {
