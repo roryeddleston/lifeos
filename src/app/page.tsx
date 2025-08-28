@@ -196,7 +196,7 @@ export default async function Home() {
                     Journal
                   </div>
                   <p className="mt-1 text-sm leading-5 text-[var(--twc-muted)]">
-                    Daily journaling with fast search and filters — reflect,
+                    Daily journaling with fast search and filters - reflect,
                     tag, and find entries in seconds.
                   </p>
                 </div>
@@ -228,16 +228,12 @@ export default async function Home() {
                   </div>
                   <p className="mt-1 text-sm leading-5 text-[var(--twc-muted)]">
                     Log sessions, track previous workouts, and manage progress
-                    over time with simple goals.
+                    over time.
                   </p>
                 </div>
               </div>
             </div>
           </div>
-
-          <p className="mt-3 text-xs text-[var(--twc-muted)]">
-            Have ideas or requests? Pop them on your Tasks as a feature request.
-          </p>
         </div>
       </Card>
     </div>

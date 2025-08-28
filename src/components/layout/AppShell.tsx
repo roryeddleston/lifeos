@@ -1,48 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import type { PropsWithChildren } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import MobileSidebar from "@/components/layout/MobileSidebar";
+// MobileSidebar removed from use to follow new mobile dropdown approach
 import Topbar from "@/components/layout/Topbar";
 import {
   PageHeaderProvider,
   usePageHeader,
 } from "@/components/layout/page-header";
+import TopbarMobile from "@/components/layout/TopbarMobile";
 
-function MainColumn({
-  children,
-  onOpenMenu,
-}: {
-  children: React.ReactNode;
-  onOpenMenu: () => void;
-}) {
+function MainColumn({ children }: PropsWithChildren) {
   const { title, action } = usePageHeader();
 
   return (
     <div className="flex-1 min-h-screen flex flex-col">
-      <Topbar
-        onOpenMenu={onOpenMenu}
-        title={title}
-        showSearch
-        primaryActionHref={action?.href ?? "/tasks"}
-        primaryActionLabel={action?.label ?? "New Task"}
-      />
+      {/* Desktop topbar unchanged */}
+      <div className="hidden md:block">
+        <Topbar
+          // onOpenMenu no longer needed for mobile
+          title={title}
+          showSearch
+          primaryActionHref={action?.href ?? "/tasks"}
+          primaryActionLabel={action?.label ?? "New Task"}
+        />
+      </div>
+
+      {/* Mobile compact topbar */}
+      <div className="md:hidden">
+        <TopbarMobile title={title ?? "Life OS"} />
+      </div>
+
       <main className="mx-auto max-w-6xl px-4 py-6 w-full">{children}</main>
     </div>
   );
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   return (
     <div className="min-h-screen md:flex">
       <Sidebar className="hidden md:block" />
-      <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <PageHeaderProvider>
-        <MainColumn onOpenMenu={() => setMobileOpen(true)}>
-          {children}
-        </MainColumn>
+        <MainColumn>{children}</MainColumn>
       </PageHeaderProvider>
     </div>
   );
