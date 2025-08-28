@@ -1,21 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// Shape of the fields we allow updating on a Goal
+type GoalUpdatePayload = Partial<{
+  title: string;
+  unit: string;
+  deadline: Date | null;
+  targetValue: number;
+  currentValue: number;
+}>;
+
+// Shape of the incoming JSON (deadline arrives as string | null)
+type GoalUpdateBody = Partial<{
+  title: string;
+  unit: string;
+  deadline: string | null;
+  targetValue: number | string;
+  currentValue: number | string;
+}>;
+
 // PATCH /api/goals/:id — partial update
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> } // params can be async in Next 14/15
 ) {
   try {
-    const { id } = await ctx.params; // <-- await params
-    const body = await req.json();
+    const { id } = await ctx.params;
+    const body = (await req.json()) as GoalUpdateBody;
 
-    const data: any = {};
+    const data: GoalUpdatePayload = {};
+
     if (typeof body.title === "string") data.title = body.title.trim();
     if (typeof body.unit === "string") data.unit = body.unit.trim();
 
-    if (body.deadline === null) data.deadline = null;
-    if (typeof body.deadline === "string" && body.deadline) {
+    if (body.deadline === null) {
+      data.deadline = null;
+    } else if (typeof body.deadline === "string" && body.deadline) {
       data.deadline = new Date(body.deadline);
     }
 
@@ -65,10 +85,10 @@ export async function PATCH(
 // DELETE /api/goals/:id — delete
 export async function DELETE(
   _req: Request,
-  ctx: { params: Promise<{ id: string }> } // params can be async in Next 14/15
+  ctx: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await ctx.params; // <-- await params
+    const { id } = await ctx.params;
     await prisma.goal.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (e) {

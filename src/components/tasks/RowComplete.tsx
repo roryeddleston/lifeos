@@ -20,7 +20,7 @@ export default function RowComplete({
     setLoading(true);
     onToggle?.(next);
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: next ? "DONE" : "TODO" }),

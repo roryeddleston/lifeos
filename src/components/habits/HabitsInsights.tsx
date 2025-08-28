@@ -144,21 +144,9 @@ export default function HabitsInsights() {
             <span>Fri</span>
             <span>Sat</span>
             <span>Sun</span>
-          </h3>
+          </div>{" "}
+          {/* ✅ fixed: was </h3> before */}
         </div>
-      </Card>
-
-      <Card className="p-4 lg:col-span-3">
-        <h3
-          className="text-sm font-medium"
-          style={{ color: "var(--twc-text)" }}
-        >
-          Notes
-        </h3>
-        <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
-          Placeholder text for layout comparison. None of the visuals above are
-          wired to data.
-        </p>
       </Card>
     </div>
   );

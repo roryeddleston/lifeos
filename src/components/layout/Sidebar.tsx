@@ -41,7 +41,6 @@ export default function Sidebar({ className = "" }: { className?: string }) {
         backgroundColor: "color-mix(in oklab, var(--twc-bg) 86%, transparent)",
         backdropFilter: "blur(10px)",
       }}
-      aria-expanded={open}
     >
       {/* Header */}
       <div
@@ -58,6 +57,8 @@ export default function Sidebar({ className = "" }: { className?: string }) {
 
         <button
           aria-label="Toggle sidebar"
+          aria-expanded={open}
+          aria-controls="sidebar-nav"
           onClick={() => setOpen((v) => !v)}
           className="rounded p-1 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 dark:focus-visible:ring-emerald-400/60"
           style={{ color: "var(--twc-muted)" }}
@@ -67,7 +68,7 @@ export default function Sidebar({ className = "" }: { className?: string }) {
       </div>
 
       {/* Nav */}
-      <nav className="px-2">
+      <nav id="sidebar-nav" aria-label="Primary" className="px-2">
         <ul className="space-y-1.5">
           {navItems.map(({ label, href, icon: Icon }) => {
             const active = pathname === href;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 type WeeklyPoint = { week: string; pct: number }; // pct in 0..1
 type HistoryPayload = {
@@ -37,8 +37,14 @@ export default function HabitHistory({ id }: { id: string }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as HistoryPayload;
         if (!cancelled) setData(json);
-      } catch (e: any) {
-        if (!cancelled) setErr(e?.message || "Failed to load");
+      } catch (e: unknown) {
+        const msg =
+          e instanceof Error
+            ? e.message
+            : typeof e === "string"
+            ? e
+            : "Failed to load";
+        if (!cancelled) setErr(msg);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -48,7 +54,8 @@ export default function HabitHistory({ id }: { id: string }) {
     };
   }, [id]);
 
-  const series = data?.series ?? [];
+  // Memoize series to keep a stable reference and satisfy exhaustive-deps
+  const series = useMemo<WeeklyPoint[]>(() => data?.series ?? [], [data]);
   const n = series.length;
 
   // chart sizing
@@ -62,7 +69,7 @@ export default function HabitHistory({ id }: { id: string }) {
   const step = 18;
   const W = Math.max(360, PL + PR + Math.max(0, n - 1) * step);
 
-  const y = (pct: number) => PT + (1 - pct) * innerH;
+  const y = useCallback((pct: number) => PT + (1 - pct) * innerH, [innerH]);
 
   const xs = useMemo(() => {
     if (n <= 1) return [PL];
@@ -70,7 +77,7 @@ export default function HabitHistory({ id }: { id: string }) {
       { length: n },
       (_, i) => PL + i * ((W - PL - PR) / (n - 1))
     );
-  }, [n, W]);
+  }, [n, W, PL, PR]);
 
   const path = useMemo(() => {
     if (n === 0) return "";
@@ -81,7 +88,7 @@ export default function HabitHistory({ id }: { id: string }) {
       parts.push(i === 0 ? `M ${xi} ${yi}` : `L ${xi} ${yi}`);
     });
     return parts.join(" ");
-  }, [series, xs]);
+  }, [series, xs, y, n]);
 
   const currentKey = isoWeekKey();
   const lastIdx = n >= 2 && series[n - 1].week === currentKey ? n - 2 : n - 1;

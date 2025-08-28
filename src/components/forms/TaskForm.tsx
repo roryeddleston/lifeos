@@ -2,12 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { taskSchema, type TaskInput } from "@/lib/validation";
+import { taskSchema } from "@/lib/validation";
+import { z as zod } from "zod";
 import Input from "@/components/forms/Input";
 import Textarea from "@/components/forms/Textarea";
 import { useToast } from "@/components/ui/Toaster";
+
+
+const formSchema = taskSchema.extend({
+  status: zod.enum(["TODO", "IN_PROGRESS", "DONE"]),
+});
+type FormValues = zod.infer<typeof formSchema>;
 
 export default function TaskForm() {
   const router = useRouter();
@@ -18,14 +25,15 @@ export default function TaskForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<TaskInput>({
-    resolver: zodResolver(taskSchema),
-    defaultValues: { status: "TODO" }, // keep default for API/schema compatibility
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { status: "TODO" },
   });
 
-  const onSubmit = async (data: TaskInput) => {
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     try {
       setSubmitting(true);
+
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,11 +90,10 @@ export default function TaskForm() {
           {...register("dueDate")}
           error={errors.dueDate?.message}
         />
-        {/* spacer */}
         <div />
       </div>
 
-      {/* Hidden native select to satisfy schema/API but keep UI minimal */}
+      {/* Hidden native select to keep API compatible while keeping UI minimal */}
       <select className="hidden" {...register("status")}>
         <option value="TODO">TODO</option>
         <option value="IN_PROGRESS">IN_PROGRESS</option>

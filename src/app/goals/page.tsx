@@ -7,9 +7,17 @@ import { formatDueLabel } from "@/lib/date";
 export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
-  const goals = await prisma.goal.findMany({
+  // Fetch from DB (deadline is Date | null here)
+  const goalsDb = await prisma.goal.findMany({
     orderBy: { createdAt: "asc" },
   });
+
+  // Serialize deadline -> string | null for GoalCard
+  const goals = goalsDb.map((g) => ({
+    ...g,
+    deadline: g.deadline ? g.deadline.toISOString() : null,
+    createdAt: g.createdAt.toISOString(),
+  }));
 
   const total = goals.length;
   const completed = goals.filter((g) => g.currentValue >= g.targetValue).length;
@@ -31,7 +39,7 @@ export default async function GoalsPage() {
               ? `next deadline: ${formatDueLabel(
                   goals
                     .filter((g) => g.deadline)
-                    .map((g) => g.deadline!.toISOString())
+                    .map((g) => g.deadline as string)
                     .sort()[0] ?? null
                 )}`
               : "no deadlines"}

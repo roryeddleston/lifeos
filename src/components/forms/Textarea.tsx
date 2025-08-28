@@ -1,5 +1,6 @@
 "use client";
-import { forwardRef, TextareaHTMLAttributes } from "react";
+
+import { forwardRef, type TextareaHTMLAttributes } from "react";
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string;
@@ -23,5 +24,6 @@ const Textarea = forwardRef<HTMLTextAreaElement, Props>(
     );
   }
 );
+
 Textarea.displayName = "Textarea";
 export default Textarea;

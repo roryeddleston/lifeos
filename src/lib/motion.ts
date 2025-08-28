@@ -1,12 +1,12 @@
-import { MotionProps, Transition } from "framer-motion";
+import type { MotionProps, Transition, BezierDefinition } from "framer-motion";
 
 /** Easing curves (cubic-bezier) */
 export const easing = {
-  standard: [0.2, 0, 0, 1] as [number, number, number, number],
-  emphasized: [0.2, 0, 0, 1], // tweak if you want a “snappier” feel
-  entrance: [0.16, 1, 0.3, 1],
-  exit: [0.7, 0, 0.84, 0],
-};
+  standard: [0.2, 0, 0, 1] as BezierDefinition,
+  emphasized: [0.2, 0, 0, 1] as BezierDefinition, // tweak if you want a “snappier” feel
+  entrance: [0.16, 1, 0.3, 1] as BezierDefinition,
+  exit: [0.7, 0, 0.84, 0] as BezierDefinition,
+} as const;
 
 /** Duration presets (seconds) */
 export const dur = {
@@ -14,17 +14,17 @@ export const dur = {
   fast: 0.28,
   base: 0.36,
   slow: 0.5,
-};
+} as const;
 
 /** Transition presets */
 export const t = {
-  base: { duration: dur.base, ease: easing.standard } as Transition,
-  fast: { duration: dur.fast, ease: easing.standard } as Transition,
-  enter: { duration: dur.base, ease: easing.entrance } as Transition,
-  exit: { duration: dur.fast, ease: easing.exit } as Transition,
+  base: { duration: dur.base, ease: easing.standard } satisfies Transition,
+  fast: { duration: dur.fast, ease: easing.standard } satisfies Transition,
+  enter: { duration: dur.base, ease: easing.entrance } satisfies Transition,
+  exit: { duration: dur.fast, ease: easing.exit } satisfies Transition,
   // Good for drawers/modals
-  spring: { type: "spring", stiffness: 300, damping: 30 } as Transition,
-};
+  spring: { type: "spring", stiffness: 300, damping: 30 } satisfies Transition,
+} as const;
 
 /** Reusable variants */
 export const variants = {
@@ -47,7 +47,7 @@ export const variants = {
       transition: { staggerChildren: 0.08, delayChildren: 0.05 },
     },
   },
-};
+} as const;
 
 /** Helper for one-off motion props — e.g., <motion.div {...fadeUp()} /> */
 export const fadeUp = (): MotionProps => ({
@@ -55,6 +55,7 @@ export const fadeUp = (): MotionProps => ({
   initial: "hidden",
   animate: "show",
 });
+
 export const fadeIn = (): MotionProps => ({
   variants: variants.fadeIn,
   initial: "hidden",

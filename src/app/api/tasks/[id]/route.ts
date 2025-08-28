@@ -1,4 +1,3 @@
-// app/api/tasks/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -13,14 +12,26 @@ const PatchSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+// Typed update data for Prisma (converted from parsed schema)
+type PrismaUpdateData = Partial<{
+  title: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  dueDate: Date | null;
+  position: number;
+}>;
+
 export async function PATCH(req: Request, { params }: RouteParams) {
-  const { id } = await params; // ⬅️ await the params
+  const { id } = await params;
   const json = await req.json();
   const parsed = PatchSchema.parse(json);
 
-  // Map dueDate ISO -> Date | null for Prisma
-  const data: any = { ...parsed };
-  if ("dueDate" in parsed) {
+  // Build a typed update object
+  const data: PrismaUpdateData = {};
+  if (parsed.title !== undefined) data.title = parsed.title;
+  if (parsed.status !== undefined) data.status = parsed.status;
+  if (parsed.position !== undefined) data.position = parsed.position;
+
+  if (parsed.dueDate !== undefined) {
     data.dueDate = parsed.dueDate ? new Date(parsed.dueDate) : null;
   }
 
@@ -40,12 +51,11 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
-  const { id } = await params; // ⬅️ await the params
+  const { id } = await params;
   await prisma.task.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });
 }
 
-// (Optional) If you also support GET on this route:
 export async function GET(_req: Request, { params }: RouteParams) {
   const { id } = await params;
   const task = await prisma.task.findUnique({

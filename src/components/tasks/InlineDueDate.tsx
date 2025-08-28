@@ -32,6 +32,9 @@ export default function InlineDueDate({
   }
 
   if (!editing) {
+    // Avoid `any`: compute the display value with explicit typing
+    const displayDue: string | null = val || due || null;
+
     return (
       <button
         type="button"
@@ -54,7 +57,7 @@ export default function InlineDueDate({
         aria-label="Edit due date"
         title="Edit due date"
       >
-        {formatDueLabel(val || (due as any))}
+        {formatDueLabel(displayDue)}
       </button>
     );
   }

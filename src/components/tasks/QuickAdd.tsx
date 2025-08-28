@@ -34,10 +34,10 @@ export default function QuickAdd() {
     todayLocalISO()
   );
   const [submitting, setSubmitting] = useState(false);
-  const [optimistic, addOptimistic] = useOptimistic<Task[]>(
-    [],
-    (state, newOnes: Task[]) => [...newOnes, ...state]
-  );
+
+  // Only need the updater, not the optimistic state itself
+  const [, addOptimistic] = useOptimistic<Task[]>([]);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus on mount

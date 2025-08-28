@@ -1,5 +1,7 @@
 "use client";
-import { forwardRef, InputHTMLAttributes } from "react";
+
+import { forwardRef } from "react";
+import type { InputHTMLAttributes } from "react";
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label?: string;

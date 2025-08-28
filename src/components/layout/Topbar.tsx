@@ -119,7 +119,6 @@ function QuickAdd() {
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer hover:opacity-95"
         style={{
-          // Blue-green brand chip
           background:
             "linear-gradient(135deg, var(--twc-accent), color-mix(in oklab, var(--twc-accent) 70%, teal))",
           color: "white",
@@ -169,21 +168,19 @@ function QuickAdd() {
 }
 
 /* ---------- topbar ---------- */
-export default function Topbar({
-  title,
-  subtitle,
-  onOpenMenu,
-  showSearch = true,
-  primaryActionHref,
-  primaryActionLabel,
-}: {
+type TopbarProps = {
   title?: string;
   subtitle?: string;
   onOpenMenu?: () => void;
   showSearch?: boolean;
   primaryActionHref?: string;
   primaryActionLabel?: string;
-}) {
+};
+
+export default function Topbar(props: TopbarProps) {
+  // Only read what we actually use to avoid "unused var" lint
+  const { showSearch = true } = props;
+
   const [today, setToday] = useState<string>("");
 
   useEffect(() => {

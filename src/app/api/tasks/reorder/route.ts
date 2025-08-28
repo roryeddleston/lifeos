@@ -1,21 +1,38 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/user";
+import { z } from "zod";
+
+const ReorderSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        position: z.coerce.number().int().min(0),
+      })
+    )
+    .min(1),
+});
 
 // Accepts: { items: [{ id: string, position: number }, ...] }
 export async function POST(req: Request) {
   const userId = await getUserId();
-  const { items } = await req.json().catch(() => ({ items: [] as any[] }));
 
-  if (!Array.isArray(items) || items.length === 0) {
-    return NextResponse.json({ error: "No items" }, { status: 400 });
+  const parsed = ReorderSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
   }
+
+  const { items } = parsed.data;
 
   await prisma.$transaction(
     items.map((i) =>
       prisma.task.update({
         where: { id: i.id },
-        data: { position: Number(i.position) || 0, userId },
+        data: { position: i.position, userId },
       })
     )
   );

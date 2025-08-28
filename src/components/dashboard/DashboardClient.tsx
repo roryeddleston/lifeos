@@ -1,11 +1,31 @@
-// src/components/dashboard/DashboardClient.tsx
 "use client";
 
 import { motion } from "framer-motion";
-import { containerVariants, cardVariants, fadeUp } from "@/lib/animations";
+import type { Variants } from "framer-motion";
 import StatCard from "@/components/cards/StatCard";
 import Card from "@/components/cards/Card";
 import { Activity, ListTodo, Target, BarChart3 } from "lucide-react";
+
+const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: EASE_OUT, staggerChildren: 0.06 },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_OUT } },
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE_OUT } },
+};
 
 type Stats = {
   habitsToday: number;
@@ -69,7 +89,7 @@ export default function DashboardClient({
             label="Open tasks"
             value={stats.tasksOpen}
             delta=""
-            positive={true}
+            positive
             icon={ListTodo}
           />
         </motion.div>
@@ -79,7 +99,7 @@ export default function DashboardClient({
             label="Goals on track"
             value={stats.goalsOnTrack}
             delta=""
-            positive={true}
+            positive
             icon={Target}
           />
         </motion.div>

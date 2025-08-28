@@ -17,7 +17,6 @@ export default function Card({
   return (
     <section
       className={`rounded-xl shadow-sm transition-shadow hover:shadow ${className}`}
-      // Use theme tokens instead of fixed Tailwind colors
       style={{
         backgroundColor: "var(--twc-surface)",
         border: "1px solid var(--twc-border)",

@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
-import Card from "@/components/cards/Card";
 
 export default function QuickAddHabit() {
   const [name, setName] = useState("");

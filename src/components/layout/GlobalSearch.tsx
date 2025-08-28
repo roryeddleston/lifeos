@@ -96,9 +96,10 @@ export default function GlobalSearch() {
           setLoading(false);
           setOpenDropdown(true);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err?.message || "Search failed");
+          const message = err instanceof Error ? err.message : "Search failed";
+          setError(message);
           setLoading(false);
         }
       }
@@ -157,7 +158,7 @@ export default function GlobalSearch() {
           <Search className="h-4 w-4 text-gray-500" />
           <input
             ref={inputRef}
-            type="text" // avoid native clear
+            type="text"
             placeholder="Search (⌘/)"
             aria-label="Global search"
             className="w-full outline-none placeholder:text-gray-400 text-sm hide-native-clear"

@@ -1,12 +1,7 @@
-// src/components/charts/WeeklyStreaks.tsx
 "use client";
 
 import { useMemo } from "react";
 
-/**
- * Props: array of { id, name, streak }
- * Renders a compact, modern horizontal bar chart of current streaks per habit.
- */
 type StreakDatum = { id: string; name: string; streak: number };
 
 export default function WeeklyStreaks({ data }: { data: StreakDatum[] }) {
