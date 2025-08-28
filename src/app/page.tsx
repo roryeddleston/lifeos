@@ -1,4 +1,3 @@
-// src/app/page.tsx
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import StatCard from "@/components/cards/StatCard";
