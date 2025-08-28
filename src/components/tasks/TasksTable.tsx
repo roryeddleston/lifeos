@@ -40,12 +40,10 @@ export default function TasksTable({
   const [items, setItems] = useState<TaskItem[]>(initial);
   const [overId, setOverId] = useState<string | null>(null);
 
-  // Keep client list in sync with server results on navigation/filter changes
   useEffect(() => setItems(initial), [initial]);
 
   const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-  // Optimistically adjust list when completing/un-completing (server already filters DONE per view)
   const handleToggleComplete = (id: string, next: boolean) => {
     setItems((curr) => {
       const updated = curr.map((t) =>
@@ -57,7 +55,6 @@ export default function TasksTable({
     });
   };
 
-  // Grouping for "all" (server already excludes DONE here)
   const grouped = useMemo(() => {
     if (view !== "all") return null;
 
@@ -100,7 +97,6 @@ export default function TasksTable({
 
   const hasAny = view === "all" ? (grouped?.length ?? 0) > 0 : items.length > 0;
 
-  // Section header row
   const SectionHeaderRow = ({ label }: { label: string }) => (
     <tr
       className="text-xs uppercase tracking-wide"
@@ -122,7 +118,6 @@ export default function TasksTable({
     </tr>
   );
 
-  // DND
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -158,7 +153,7 @@ export default function TasksTable({
     });
   }
 
-  function SortableRow({ t }: { t: TaskItem }) {
+  function SortableRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
     const {
       attributes,
       listeners,
@@ -178,11 +173,10 @@ export default function TasksTable({
         : baseTransform || undefined,
       transition: transition || "transform 150ms ease",
       boxShadow: isDragging ? "0 1px 4px rgba(0,0,0,0.08)" : undefined,
-      // remove any background tint on rows (inherits container surface)
       backgroundColor: "transparent",
-      // single faint divider (no double borders)
-      borderBottom:
-        "1px solid color-mix(in oklab, var(--twc-text) 10%, transparent)",
+      borderBottom: isLast
+        ? "none"
+        : "1px solid color-mix(in oklab, var(--twc-text) 10%, transparent)",
     };
 
     const isDone = t.status === "DONE";
@@ -205,10 +199,9 @@ export default function TasksTable({
           outlineOffset: "-2px",
         }}
         key={t.id}
-        className="group last:border-0"
+        className="group"
       >
         {[
-          // Drag handle
           <td key="drag" className="py-3 pr-2 align-middle w-6">
             <button
               type="button"
@@ -224,8 +217,6 @@ export default function TasksTable({
               <GripVertical className="w-4 h-4" />
             </button>
           </td>,
-
-          // Complete checkbox
           <td key="chk" className="py-3 pr-2 align-middle w-10">
             <RowComplete
               id={t.id}
@@ -233,13 +224,9 @@ export default function TasksTable({
               onToggle={(next) => handleToggleComplete(t.id, next)}
             />
           </td>,
-
-          // Title
           <td key="title" className="py-3 pr-4 align-middle">
             <InlineTitle id={t.id} title={cap(t.title)} done={isDone} />
           </td>,
-
-          // Due
           <td
             key="due"
             className="py-3 pr-4 align-middle"
@@ -247,8 +234,6 @@ export default function TasksTable({
           >
             <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
           </td>,
-
-          // Actions
           <td key="actions" className="py-3 pr-0 text-right align-middle">
             <RowActions id={t.id} title={t.title} dueDate={t.dueDate} />
           </td>,
@@ -262,13 +247,12 @@ export default function TasksTable({
       items={rows.map((r) => r.id)}
       strategy={verticalListSortingStrategy}
     >
-      {rows.map((t) => (
-        <SortableRow key={t.id} t={t} />
+      {rows.map((t, idx) => (
+        <SortableRow key={t.id} t={t} isLast={idx === rows.length - 1} />
       ))}
     </SortableContext>
   );
 
-  // Header
   const Header = () => (
     <thead>
       <tr
@@ -297,7 +281,6 @@ export default function TasksTable({
     </thead>
   );
 
-  // Empty state
   const EmptyBlock = () => {
     const isDoneView = view === "done";
     return (
