@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { parseQuickDate } from "@/lib/quickdate";
 import { useToast } from "@/components/ui/Toaster";
+import AddActionButton from "@/components/ui/AddActionButton";
 
 type Task = {
   id: string;
@@ -29,7 +30,6 @@ export default function QuickAdd() {
   const toast = useToast();
 
   const [value, setValue] = useState("");
-  // Default to today 👇
   const [selectedDate, setSelectedDate] = useState<string | null>(
     todayLocalISO()
   );
@@ -40,7 +40,6 @@ export default function QuickAdd() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -54,7 +53,7 @@ export default function QuickAdd() {
 
   function toPayload(lines: string) {
     return splitLines(lines).map((line) => {
-      const parsedISO = parseQuickDate(line); // Natural date in text
+      const parsedISO = parseQuickDate(line);
       const iso = parsedISO ?? selectedDate ?? null;
       const cleaned = line
         .replace(
@@ -76,13 +75,16 @@ export default function QuickAdd() {
     if (tasksPayload.length === 0) return;
 
     // Optimistic placeholders (local only)
-    const optimisticTasks: Task[] = tasksPayload.map((t) => ({
-      id: crypto.randomUUID(),
-      title: t.title,
-      dueDate: t.dueDate ?? null,
-      status: "TODO",
-    }));
-    startTransition(() => addOptimistic(optimisticTasks));
+    startTransition(() =>
+      addOptimistic(
+        tasksPayload.map((t) => ({
+          id: crypto.randomUUID(),
+          title: t.title,
+          dueDate: t.dueDate ?? null,
+          status: "TODO",
+        }))
+      )
+    );
 
     setSubmitting(true);
     try {
@@ -105,10 +107,9 @@ export default function QuickAdd() {
 
       startTransition(() => router.refresh());
       setValue("");
-      // Keep default at today after submit
       setSelectedDate(todayLocalISO());
 
-      // Preserve focus—run on next frame to avoid blurring
+      // Preserve focus next frame
       requestAnimationFrame(() => {
         requestAnimationFrame(() => inputRef.current?.focus());
       });
@@ -185,21 +186,15 @@ export default function QuickAdd() {
           }}
         />
 
-        <button
+        <AddActionButton
+          label="Add To-do"
           onClick={() => {
             const text = value.trim();
             if (text) createMany(text);
           }}
           disabled={submitting || !value.trim()}
-          className="rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)] disabled:opacity-50"
           aria-label="Add task"
-          style={{
-            backgroundColor: "var(--twc-text)",
-            color: "var(--twc-bg)",
-          }}
-        >
-          Add
-        </button>
+        />
       </div>
     </div>
   );

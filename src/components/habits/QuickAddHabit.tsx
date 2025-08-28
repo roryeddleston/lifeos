@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
+import AddActionButton from "@/components/ui/AddActionButton";
 
 export default function QuickAddHabit() {
   const [name, setName] = useState("");
@@ -59,17 +60,13 @@ export default function QuickAddHabit() {
           }}
           disabled={isPending}
         />
-        <button
+
+        <AddActionButton
           type="submit"
-          className="rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50 transition"
-          style={{
-            backgroundColor: "var(--twc-primary)",
-            color: "var(--twc-primary-contrast)",
-          }}
+          label="Add Habit"
           disabled={isPending || !name.trim()}
-        >
-          Add
-        </button>
+          aria-label="Add habit"
+        />
       </div>
     </form>
   );

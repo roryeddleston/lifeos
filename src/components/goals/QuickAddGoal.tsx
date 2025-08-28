@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Card from "@/components/cards/Card";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
+import AddActionButton from "@/components/ui/AddActionButton";
 
 export default function QuickAddGoal() {
   const router = useRouter();
@@ -15,8 +16,16 @@ export default function QuickAddGoal() {
   const [unit, setUnit] = useState("");
   const [deadline, setDeadline] = useState<string>("");
 
+  const isValid =
+    title.trim().length > 0 &&
+    unit.trim().length > 0 &&
+    targetValue !== "" &&
+    Number(targetValue) > 0;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValid) return;
+
     const payload = {
       title: title.trim(),
       targetValue:
@@ -24,6 +33,7 @@ export default function QuickAddGoal() {
       unit: unit.trim(),
       deadline: deadline || null,
     };
+
     try {
       const res = await fetch("/api/goals", {
         method: "POST",
@@ -36,6 +46,7 @@ export default function QuickAddGoal() {
         toast({ variant: "error", title: "Add goal failed" });
         return;
       }
+      // reset form
       setTitle("");
       setTargetValue("");
       setUnit("");
@@ -138,18 +149,12 @@ export default function QuickAddGoal() {
           />
         </div>
 
-        <div className="md:col-span-5">
-          <button
+        <div className="pt-4 md:col-span-5">
+          <AddActionButton
             type="submit"
-            disabled={isPending}
-            className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
-            style={{
-              backgroundColor: "var(--twc-text)",
-              color: "var(--twc-bg)",
-            }}
-          >
-            Add Goal
-          </button>
+            disabled={isPending || !isValid}
+            label="Add Goal"
+          />
         </div>
       </form>
     </Card>
