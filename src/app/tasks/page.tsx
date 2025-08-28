@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import Card from "@/components/cards/Card";
 import TasksTable from "../../components/tasks/TasksTable";
-import QuickAdd from "@/components/tasks/QuickAdd";
+import QuickAdd from "@/components/tasks/QuickAddTask";
 import Filters from "../../components/tasks/Filters";
 
 export const dynamic = "force-dynamic";
