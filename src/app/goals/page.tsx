@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import Card from "@/components/cards/Card";
-import GoalCard from "@/components/goals/GoalCard";
+import GoalsTabs from "@/components/goals/GoalsTabs";
 import QuickAddGoal from "@/components/goals/QuickAddGoal";
 import { formatDueLabel } from "@/lib/date";
 
@@ -12,15 +11,18 @@ export default async function GoalsPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Serialize deadline -> string | null for GoalCard
+  // Serialize deadline -> string | null for client components
   const goals = goalsDb.map((g) => ({
     ...g,
     deadline: g.deadline ? g.deadline.toISOString() : null,
     createdAt: g.createdAt.toISOString(),
   }));
 
+  const active = goals.filter((g) => g.currentValue < g.targetValue);
+  const completed = goals.filter((g) => g.currentValue >= g.targetValue);
+
   const total = goals.length;
-  const completed = goals.filter((g) => g.currentValue >= g.targetValue).length;
+  const completedCount = completed.length;
 
   return (
     <div className="space-y-6">
@@ -34,7 +36,7 @@ export default async function GoalsPage() {
         </h1>
         {total > 0 && (
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
-            {completed}/{total} completed ·{" "}
+            {completedCount}/{total} completed ·{" "}
             {goals.some((g) => g.deadline)
               ? `next deadline: ${formatDueLabel(
                   goals
@@ -47,40 +49,10 @@ export default async function GoalsPage() {
         )}
       </div>
 
-      {/* List */}
-      <Card className="border-0 !shadow-none">
-        {goals.length === 0 ? (
-          <div className="px-4 py-16">
-            <div
-              className="mx-auto max-w-md rounded-lg px-6 py-8 text-center"
-              style={{
-                backgroundColor: "var(--twc-surface)",
-                border: `1px solid var(--twc-border)`,
-                color: "var(--twc-text)",
-              }}
-            >
-              <h3
-                className="text-sm font-medium"
-                style={{ color: "var(--twc-text)" }}
-              >
-                No goals yet
-              </h3>
-              <p className="mt-2 text-sm" style={{ color: "var(--twc-muted)" }}>
-                Add your first goal below to start tracking progress.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <ul className="divide-y divide-[var(--twc-border)]">
-            {goals.map((g) => (
-              <li key={g.id} className="px-4 py-3">
-                <GoalCard goal={g} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {/* Tabs: Active / Completed */}
+      <GoalsTabs active={active} completed={completed} />
 
+      {/* Add goal */}
       <QuickAddGoal />
     </div>
   );

@@ -38,15 +38,25 @@ export default function Filters() {
             tabIndex={isActive ? 0 : -1}
             onClick={() => setView(tab.value)}
             className={clsx(
-              "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]",
-              isActive ? "font-medium" : "opacity-85"
+              "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]",
+              isActive ? "shadow-sm" : "opacity-90"
             )}
             style={{
               color: "var(--twc-text)",
               backgroundColor: isActive
-                ? "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))"
+                ? "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))"
                 : "transparent",
               border: "1px solid var(--twc-border)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isActive
+                ? "color-mix(in oklab, var(--twc-text) 12%, var(--twc-surface))"
+                : "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isActive
+                ? "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))"
+                : "transparent";
             }}
           >
             {tab.label}
