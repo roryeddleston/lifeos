@@ -1,67 +1,80 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Helpers for UTC date-only behavior
-function startOfDayUTC(d = new Date()) {
+// Ensure a pure UTC date-only timestamp (00:00:00Z)
+function startOfDayUTC(d: Date) {
   return new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   );
 }
-function parseIsoDateUTC(iso: string) {
-  // Expect YYYY-MM-DD
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(Date.UTC(y, m - 1, d));
-}
 
-// POST /api/habits/:id/records/:date  { completed?: boolean }
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string; date: string }> }
-) {
+type RouteParams = {
+  params: Promise<{ id: string; date: string }>;
+};
+
+export async function POST(req: Request, { params }: RouteParams) {
+  const { id, date } = await params;
+
+  // Expect :date as YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: "Invalid date param" }, { status: 400 });
+  }
+
+  // Construct UTC midnight for that calendar day
+  const when = new Date(`${date}T00:00:00.000Z`);
+  const dayUTC = startOfDayUTC(when);
+
+  // Optional body: { completed?: boolean }
+  let body: any = null;
   try {
-    const { id, date } = await ctx.params;
+    body = await req.json().catch(() => null);
+  } catch {
+    body = null;
+  }
 
-    const when = parseIsoDateUTC(date);
-    if (!when)
-      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  const hasExplicit = body && typeof body.completed === "boolean";
+  const explicit: boolean | null = hasExplicit ? Boolean(body.completed) : null;
 
-    const body = await req.json().catch(() => ({}));
-    const hasExplicit = typeof body?.completed === "boolean";
-    const explicit = hasExplicit ? Boolean(body.completed) : null;
-
-    // Find existing record (date is stored UTC date-only in your schema)
+  try {
+    // Look up existing record for (habitId, date)
     const existing = await prisma.habitRecord.findUnique({
       where: {
-        date_habitId: {
-          date: startOfDayUTC(when),
+        // IMPORTANT: use the correct compound unique key name
+        habitId_date: {
           habitId: id,
+          date: dayUTC,
         },
       },
     });
 
-    let completed: boolean;
+    // Decide the next value: toggle if not explicitly provided
+    const nextCompleted = explicit ?? !Boolean(existing?.completed);
 
-    if (existing) {
-      completed = hasExplicit ? explicit! : !existing.completed;
-      await prisma.habitRecord.update({
-        where: { id: existing.id },
-        data: { completed },
-      });
-    } else {
-      completed = hasExplicit ? explicit! : true; // default new click = complete
-      await prisma.habitRecord.create({
-        data: {
+    // Upsert to set the desired value
+    const saved = await prisma.habitRecord.upsert({
+      where: {
+        habitId_date: {
           habitId: id,
-          date: startOfDayUTC(when),
-          completed,
+          date: dayUTC,
         },
-      });
-    }
+      },
+      update: { completed: nextCompleted },
+      create: {
+        habitId: id,
+        date: dayUTC,
+        completed: nextCompleted,
+      },
+      select: {
+        id: true,
+        habitId: true,
+        date: true,
+        completed: true,
+      },
+    });
 
-    return NextResponse.json({ ok: true, habitId: id, date, completed });
-  } catch (err) {
-    console.error("POST /api/habits/[id]/records/[date] failed", err);
+    return NextResponse.json(saved, { status: 200 });
+  } catch (e) {
+    console.error("POST /api/habits/[id]/records/[date] failed", e);
     return NextResponse.json(
       { error: "Failed to update habit record" },
       { status: 500 }
