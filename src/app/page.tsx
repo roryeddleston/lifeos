@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import StatCard from "@/components/cards/StatCard";
-import WeeklyStreaks from "@/components/charts/WeeklyStreaks";
+import HabitStreakBars from "@/components/charts/HabitStreakBars";
 import { Activity, ListTodo, Target, BookOpen, Dumbbell } from "lucide-react";
 
 // Helper: UTC start of a given day
@@ -51,13 +51,16 @@ export default async function Home() {
   });
 
   const todayISO = today.toISOString().slice(0, 10);
-  const streaks = habits.map((h) => {
+  const streaksRaw = habits.map((h) => {
     const completedSet = new Set(
       h.records.map((r) => r.date.toISOString().slice(0, 10))
     );
     const streak = currentStreakFromSet(completedSet, todayISO);
     return { id: h.id, name: h.name, streak };
   });
+
+  // Sort highest -> lowest
+  const streaks = streaksRaw.sort((a, b) => b.streak - a.streak);
 
   const habitsCompletedToday = habits.reduce((sum, h) => {
     const hasToday = h.records.some(
@@ -115,14 +118,10 @@ export default async function Home() {
         />
       </div>
 
-      {/* Weekly Habit Streaks */}
-      <Card
-        title="Weekly Habit Streaks"
-        subtitle="Current streak by habit"
-        className="border"
-      >
+      {/* Habit streaks (Bars only) */}
+      <Card title="Habit streaks" className="border">
         <div className="p-4 md:p-5">
-          <WeeklyStreaks data={streaks} />
+          <HabitStreakBars data={streaks} />
         </div>
       </Card>
 
@@ -196,7 +195,7 @@ export default async function Home() {
                     Journal
                   </div>
                   <p className="mt-1 text-sm leading-5 text-[var(--twc-muted)]">
-                    Daily journaling with fast search and filters - reflect,
+                    Daily journaling with fast search and filters — reflect,
                     tag, and find entries in seconds.
                   </p>
                 </div>
