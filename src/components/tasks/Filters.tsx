@@ -23,26 +23,30 @@ export default function Filters() {
   }
 
   return (
-    <div className="flex gap-1">
+    <div
+      role="tablist"
+      aria-label="Task filters"
+      className="flex flex-wrap items-center gap-2"
+    >
       {tabs.map((tab) => {
         const isActive = currentView === tab.value;
         return (
           <button
             key={tab.value}
+            role="tab"
+            aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             onClick={() => setView(tab.value)}
             className={clsx(
-              "px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2",
-              isActive
-                ? "text-[var(--twc-primary-contrast)]"
-                : "text-[color-mix(in oklab,var(--twc-text) 60%,transparent)]"
+              "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]",
+              isActive ? "font-medium" : "opacity-85"
             )}
             style={{
+              color: "var(--twc-text)",
               backgroundColor: isActive
-                ? "var(--twc-primary)"
-                : "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))",
-              border: isActive
-                ? "1px solid transparent"
-                : "1px solid var(--twc-border)",
+                ? "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))"
+                : "transparent",
+              border: "1px solid var(--twc-border)",
             }}
           >
             {tab.label}
