@@ -1,11 +1,13 @@
+// src/components/habits/HabitCard.tsx
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
 import InlineHabitName from "./InlineHabitName";
 import HabitHistory from "./HabitHistory";
+import TrashButton from "@/components/ui/TrashButton";
 
 type HabitView = {
   id: string;
@@ -95,9 +97,9 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
 
   return (
     <div className="space-y-2">
-      {/* Original 3-column grid (name / 7-day strip / delete) */}
+      {/* 3-column grid (name / 7-day strip / delete) */}
       <div className="grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-center gap-4">
-        {/* Left: name + streak + history toggle (flexible) */}
+        {/* Left: name + streak + history toggle */}
         <div className="min-w-0 flex items-center gap-2">
           <InlineHabitName id={habit.id} name={habit.name} />
 
@@ -106,7 +108,6 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
               className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
               title={`${habit.streak} day streak`}
               style={{
-                // soft chip that respects theme
                 backgroundColor:
                   "color-mix(in oklab, var(--twc-accent) 12%, var(--twc-surface))",
                 color: "var(--twc-text)",
@@ -117,7 +118,6 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
             </span>
           )}
 
-          {/* History toggle (kept small; does not alter grid columns) */}
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
@@ -127,6 +127,13 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
               border: "1px solid var(--twc-border)",
               backgroundColor: "var(--twc-surface)",
               color: "var(--twc-text)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor =
+                "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--twc-surface)";
             }}
           >
             {showHistory ? (
@@ -138,7 +145,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           </button>
         </div>
 
-        {/* Middle: 7-day strip (fixed width) */}
+        {/* Middle: 7-day strip */}
         <div className="w-[17rem] shrink-0">
           <div className="grid grid-cols-7 gap-2">
             {tiles.map((d) => {
@@ -151,7 +158,6 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                   onClick={() => toggleDay(d.iso, !d.completed)}
                   className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
                   style={{
-                    // inactive: neutral surface; active: slight accent tint
                     border: `1px solid ${
                       active
                         ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
@@ -160,7 +166,6 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                     backgroundColor: active
                       ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
                       : "var(--twc-surface)",
-                    // keep today hint but subtle
                     boxShadow: isToday
                       ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
                       : undefined,
@@ -198,27 +203,18 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           </div>
         </div>
 
-        {/* Right: delete (fixed) */}
+        {/* Right: delete */}
         <div className="w-8 flex items-center justify-center">
-          <button
-            type="button"
+          <TrashButton
             onClick={handleDelete}
             disabled={deleting}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition active:scale-[0.98] disabled:opacity-50"
             aria-label="Delete habit"
             title="Delete habit"
-            style={{
-              color: "var(--twc-danger)",
-              border: "1px solid var(--twc-border)",
-              backgroundColor: "var(--twc-surface)",
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          />
         </div>
       </div>
 
-      {/* Collapsible history block — spans full width, doesn't affect grid */}
+      {/* Collapsible history */}
       {showHistory && (
         <div className="px-0">
           <HabitHistory id={habit.id} />

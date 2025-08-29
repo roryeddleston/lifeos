@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Minus, Plus, Calculator } from "lucide-react";
+import { Minus, Plus, Calculator } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
 import InlineGoalTitle from "./InlineGoalTitle";
 import { formatDateGB, formatDueLabel } from "@/lib/date";
+import TrashButton from "@/components/ui/TrashButton";
 
 type Goal = {
   id: string;
@@ -18,21 +19,14 @@ type Goal = {
   createdAt: string; // ISO when serialized
 };
 
-export default function GoalCard({
-  goal,
-  onCustomOpen,
-}: {
-  goal: Goal;
-  /** Optional: let parent close other open custom panels */
-  onCustomOpen?: (id: string) => void;
-}) {
+export default function GoalCard({ goal }: { goal: Goal }) {
   const router = useRouter();
   const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState(goal);
 
-  // Custom adjust panel (single amount + Apply)
+  // custom adjust panel
   const [customOpen, setCustomOpen] = useState(false);
   const [customAmount, setCustomAmount] = useState<string>("");
 
@@ -98,28 +92,28 @@ export default function GoalCard({
     }
   }
 
-  // Apply custom amount (adds the entered amount)
-  function applyCustom() {
+  // custom amount apply
+  function applyCustom(sign: "add" | "sub") {
     const n = Number(customAmount);
     if (!Number.isFinite(n) || n <= 0) {
       toast({ variant: "error", title: "Enter a positive number" });
       return;
     }
-    const next = clampToRange(local.currentValue + n);
+    const delta = sign === "add" ? n : -n;
+    const next = clampToRange(local.currentValue + delta);
     setLocal((c) => ({ ...c, currentValue: next }));
     setCustomAmount("");
     setCustomOpen(false);
     patch({ currentValue: next });
   }
 
-  // Buttons: clear cursor + focus-visible ring only on keyboard
   const btnBase =
-    "inline-flex h-8 w-8 items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]";
-  const btnBox = {
+    "inline-flex items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2";
+  const boxStyle: React.CSSProperties = {
     color: "var(--twc-text)",
     border: "1px solid var(--twc-border)",
     backgroundColor: "var(--twc-surface)",
-  } as React.CSSProperties;
+  };
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
@@ -164,7 +158,7 @@ export default function GoalCard({
           />
         </div>
 
-        {/* Custom adjust panel (number-only + Apply + tiny Close) */}
+        {/* Custom adjust panel */}
         {customOpen && (
           <div
             className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg p-2"
@@ -182,42 +176,45 @@ export default function GoalCard({
               inputMode="decimal"
               step="any"
               min={0}
-              placeholder="Enter amount"
+              placeholder="e.g. 10"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              className="h-8 rounded-md px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
-              style={{ ...btnBox, width: "7.5rem" }}
+              className="h-8 w-28 rounded-md px-2 text-sm focus-visible:ring-2"
+              style={boxStyle}
               onKeyDown={(e) => {
-                if (e.key === "Enter") applyCustom();
+                if (e.key === "Enter") applyCustom("add");
                 if (e.key === "Escape") {
                   setCustomAmount("");
                   setCustomOpen(false);
                 }
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--twc-surface)";
+              }}
             />
             <button
               type="button"
-              className="inline-flex h-8 items-center justify-center rounded-md px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)] cursor-pointer transition active:scale-[0.98] hover:opacity-90"
-              style={btnBox}
-              onClick={applyCustom}
-              disabled={busy || isPending}
-              aria-label="Apply custom amount"
-              title="Apply"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-8 items-center justify-center rounded-md px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)] cursor-pointer transition active:scale-[0.98] hover:opacity-90"
-              style={btnBox}
+              className={`${btnBase} px-3 h-8`}
+              style={boxStyle}
               onClick={() => {
                 setCustomAmount("");
                 setCustomOpen(false);
               }}
               aria-label="Close custom adjust"
               title="Close"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--twc-surface)";
+              }}
             >
-              Close
+              <span className="text-xs">Close</span>
             </button>
           </div>
         )}
@@ -225,65 +222,70 @@ export default function GoalCard({
 
       {/* Right: controls */}
       <div className="flex items-center gap-2">
-        {/* -1 */}
         <button
           type="button"
           onClick={() => adjust(-step)}
           disabled={busy || isPending}
-          className={`${btnBase} hover:opacity-90`}
-          style={btnBox}
+          className={`${btnBase} h-8 w-8`}
+          style={boxStyle}
           title={`- ${step}`}
           aria-label="Decrement"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor =
+              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
+          }}
         >
           <Minus className="h-4 w-4" />
         </button>
 
-        {/* +1 */}
         <button
           type="button"
           onClick={() => adjust(+step)}
           disabled={busy || isPending}
-          className={`${btnBase} hover:opacity-90`}
-          style={btnBox}
+          className={`${btnBase} h-8 w-8`}
+          style={boxStyle}
           title={`+ ${step}`}
           aria-label="Increment"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor =
+              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
+          }}
         >
           <Plus className="h-4 w-4" />
         </button>
 
-        {/* Open custom */}
         <button
           type="button"
-          onClick={() => {
-            if (!customOpen) onCustomOpen?.(local.id);
-            setCustomOpen((v) => !v);
-          }}
-          className={`${btnBase} w-auto px-2 gap-1 hover:opacity-90`}
-          style={btnBox}
+          onClick={() => setCustomOpen((v) => !v)}
+          className={`${btnBase} w-auto px-2 gap-1 h-8`}
+          style={boxStyle}
           aria-expanded={customOpen}
           aria-controls={`custom-adjust-${local.id}`}
-          title="Add a custom amount"
+          title="Add/subtract custom amount"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor =
+              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
+          }}
         >
           <Calculator className="h-4 w-4" />
           <span className="text-xs">Custom</span>
         </button>
 
-        {/* Delete */}
-        <button
-          type="button"
+        <TrashButton
           onClick={handleDelete}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-danger)] hover:opacity-90"
-          style={{
-            color: "var(--twc-danger)",
-            border: "1px solid var(--twc-border)",
-            backgroundColor: "var(--twc-surface)",
-          }}
           aria-label="Delete goal"
           title="Delete goal"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        />
       </div>
     </div>
   );
