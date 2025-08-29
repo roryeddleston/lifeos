@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Minus, Plus } from "lucide-react";
+import { Trash2, Minus, Plus, Calculator } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
 import InlineGoalTitle from "./InlineGoalTitle";
 import { formatDateGB, formatDueLabel } from "@/lib/date";
@@ -24,6 +24,10 @@ export default function GoalCard({ goal }: { goal: Goal }) {
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState(goal);
+
+  // NEW: custom adjust panel
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customAmount, setCustomAmount] = useState<string>("");
 
   const pct = Math.max(
     0,
@@ -57,11 +61,12 @@ export default function GoalCard({ goal }: { goal: Goal }) {
 
   const step = 1;
 
+  function clampToRange(v: number) {
+    return Math.max(0, Math.min(local.targetValue, v));
+  }
+
   function adjust(delta: number) {
-    const next = Math.max(
-      0,
-      Math.min(local.targetValue, local.currentValue + delta)
-    );
+    const next = clampToRange(local.currentValue + delta);
     setLocal((c) => ({ ...c, currentValue: next }));
     patch({ currentValue: next });
   }
@@ -86,11 +91,35 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     }
   }
 
+  // NEW: handle custom amount apply (positive adds, negative subtracts)
+  function applyCustom(sign: "add" | "sub") {
+    const n = Number(customAmount);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast({ variant: "error", title: "Enter a positive number" });
+      return;
+    }
+    const delta = sign === "add" ? n : -n;
+    const next = clampToRange(local.currentValue + delta);
+    setLocal((c) => ({ ...c, currentValue: next }));
+    setCustomAmount("");
+    setCustomOpen(false);
+    patch({ currentValue: next });
+  }
+
+  // Shared button classes/styles (now all clearly clickable)
+  const btnBase =
+    "inline-flex h-8 w-8 items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2";
+  const btnBox = {
+    color: "var(--twc-text)",
+    border: "1px solid var(--twc-border)",
+    backgroundColor: "var(--twc-surface)",
+  } as React.CSSProperties;
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
       {/* Left: title + meta + progress */}
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <InlineGoalTitle
             id={local.id}
             title={local.title}
@@ -128,6 +157,78 @@ export default function GoalCard({ goal }: { goal: Goal }) {
             aria-label="Progress"
           />
         </div>
+
+        {/* Custom adjust panel */}
+        {customOpen && (
+          <div
+            className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg p-2"
+            style={{
+              border: "1px solid var(--twc-border)",
+              backgroundColor:
+                "color-mix(in oklab, var(--twc-text) 4%, var(--twc-surface))",
+            }}
+          >
+            <label className="text-xs" style={{ color: "var(--twc-muted)" }}>
+              Amount
+            </label>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min={0}
+              placeholder={`e.g. 10 ${local.unit}`}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              className="h-8 w-28 rounded-md px-2 text-sm focus-visible:ring-2"
+              style={{
+                ...btnBox,
+                width: "7.5rem",
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyCustom("add");
+                if (e.key === "Escape") {
+                  setCustomAmount("");
+                  setCustomOpen(false);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={`${btnBase} px-3 h-8 w-auto hover:opacity-90`}
+              style={btnBox}
+              onClick={() => applyCustom("add")}
+              disabled={busy || isPending}
+              aria-label="Add custom amount"
+              title="Add custom amount"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              className={`${btnBase} px-3 h-8 w-auto hover:opacity-90`}
+              style={btnBox}
+              onClick={() => applyCustom("sub")}
+              disabled={busy || isPending}
+              aria-label="Subtract custom amount"
+              title="Subtract custom amount"
+            >
+              Subtract
+            </button>
+            <button
+              type="button"
+              className={`${btnBase} px-3 h-8 w-auto hover:opacity-90`}
+              style={btnBox}
+              onClick={() => {
+                setCustomAmount("");
+                setCustomOpen(false);
+              }}
+              aria-label="Close custom adjust"
+              title="Close"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right: controls */}
@@ -136,12 +237,8 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           type="button"
           onClick={() => adjust(-step)}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
-          style={{
-            color: "var(--twc-text)",
-            border: "1px solid var(--twc-border)",
-            backgroundColor: "var(--twc-surface)",
-          }}
+          className={`${btnBase} hover:opacity-90`}
+          style={btnBox}
           title={`- ${step}`}
           aria-label="Decrement"
         >
@@ -152,12 +249,8 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           type="button"
           onClick={() => adjust(+step)}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
-          style={{
-            color: "var(--twc-text)",
-            border: "1px solid var(--twc-border)",
-            backgroundColor: "var(--twc-surface)",
-          }}
+          className={`${btnBase} hover:opacity-90`}
+          style={btnBox}
           title={`+ ${step}`}
           aria-label="Increment"
         >
@@ -166,9 +259,22 @@ export default function GoalCard({ goal }: { goal: Goal }) {
 
         <button
           type="button"
+          onClick={() => setCustomOpen((v) => !v)}
+          className={`${btnBase} w-auto px-2 gap-1 hover:opacity-90`}
+          style={btnBox}
+          aria-expanded={customOpen}
+          aria-controls={`custom-adjust-${local.id}`}
+          title="Add/subtract custom amount"
+        >
+          <Calculator className="h-4 w-4" />
+          <span className="text-xs">Custom</span>
+        </button>
+
+        <button
+          type="button"
           onClick={handleDelete}
           disabled={busy || isPending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-danger)]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-danger)] hover:opacity-90"
           style={{
             color: "var(--twc-danger)",
             border: "1px solid var(--twc-border)",
