@@ -39,15 +39,25 @@ export default function GoalsTabs({
         type="button"
         onClick={() => setTab(value)}
         className={[
-          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition cursor-pointer",
-          isActive ? "font-medium" : "opacity-80 hover:opacity-100",
+          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors cursor-pointer",
+          isActive ? "font-medium shadow-sm" : "opacity-90",
         ].join(" ")}
         style={{
           color: "var(--twc-text)",
           backgroundColor: isActive
-            ? "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))"
+            ? "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))"
             : "transparent",
           border: `1px solid var(--twc-border)`,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = isActive
+            ? "color-mix(in oklab, var(--twc-text) 12%, var(--twc-surface))"
+            : "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = isActive
+            ? "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))"
+            : "transparent";
         }}
         aria-pressed={isActive}
       >
