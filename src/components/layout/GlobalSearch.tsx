@@ -143,25 +143,36 @@ export default function GlobalSearch() {
 
   const TypeIcon = ({ t }: { t: "task" | "habit" | "goal" }) =>
     t === "task" ? (
-      <ListTodo className="h-4 w-4 text-gray-500" />
+      <ListTodo className="h-4 w-4" style={{ color: "var(--twc-muted)" }} />
     ) : t === "habit" ? (
-      <Activity className="h-4 w-4 text-gray-500" />
+      <Activity className="h-4 w-4" style={{ color: "var(--twc-muted)" }} />
     ) : (
-      <Target className="h-4 w-4 text-gray-500" />
+      <Target className="h-4 w-4" style={{ color: "var(--twc-muted)" }} />
     );
 
   return (
     <>
       {/* Desktop inline search */}
       <div className="relative hidden md:block" ref={dropdownRef}>
-        <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm hover:shadow transition w-[420px] max-w-[52vw]">
-          <Search className="h-4 w-4 text-gray-500" />
+        <div
+          className="flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm hover:shadow transition w-[420px] max-w-[52vw]"
+          style={{
+            borderColor: "var(--twc-border)",
+            backgroundColor: "var(--twc-surface)",
+          }}
+        >
+          <Search className="h-4 w-4" style={{ color: "var(--twc-muted)" }} />
           <input
             ref={inputRef}
             type="text"
             placeholder="Search (⌘/)"
             aria-label="Global search"
-            className="w-full outline-none placeholder:text-gray-400 text-sm hide-native-clear"
+            className="w-full outline-none text-sm hide-native-clear"
+            style={{
+              color: "var(--twc-text)",
+              background: "transparent",
+              "::placeholder": { color: "var(--twc-muted)" },
+            }}
             value={q}
             onChange={(e) => setQ(e.currentTarget.value)}
             onFocus={() =>
@@ -171,26 +182,44 @@ export default function GlobalSearch() {
           {q && (
             <button
               aria-label="Clear"
-              className="rounded p-1 hover:bg-gray-100"
+              className="rounded p-1 transition-colors"
+              style={{ color: "var(--twc-muted)" }}
               onClick={() => setQ("")}
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* Dropdown */}
         {openDropdown && (
-          <div className="absolute z-50 mt-2 w-[420px] max-w-[90vw] rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div
+            className="absolute z-50 mt-2 w-[420px] max-w-[90vw] rounded-xl border shadow-xl overflow-hidden"
+            style={{
+              borderColor: "var(--twc-border)",
+              backgroundColor: "var(--twc-surface)",
+            }}
+          >
             <div className="max-h-80 overflow-auto p-2">
               {loading ? (
-                <div className="px-3 py-3 text-sm text-gray-600">
+                <div
+                  className="px-3 py-3 text-sm"
+                  style={{ color: "var(--twc-muted)" }}
+                >
                   Searching…
                 </div>
               ) : error ? (
-                <div className="px-3 py-3 text-sm text-red-600">{error}</div>
+                <div
+                  className="px-3 py-3 text-sm"
+                  style={{ color: "var(--twc-danger)" }}
+                >
+                  {error}
+                </div>
               ) : totalCount === 0 ? (
-                <div className="px-3 py-3 text-sm text-gray-600">
+                <div
+                  className="px-3 py-3 text-sm"
+                  style={{ color: "var(--twc-muted)" }}
+                >
                   {q.trim().length < 2
                     ? "Type at least 2 characters to search."
                     : `No results for “${debouncedQ}”.`}
@@ -200,7 +229,10 @@ export default function GlobalSearch() {
                   {/* Tasks */}
                   {results.tasks.length > 0 && (
                     <div className="px-2 pt-1">
-                      <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">
+                      <div
+                        className="text-[11px] uppercase tracking-wide mb-1"
+                        style={{ color: "var(--twc-muted)" }}
+                      >
                         Tasks
                       </div>
                       <ul className="space-y-1">
@@ -208,10 +240,16 @@ export default function GlobalSearch() {
                           <li key={t.id}>
                             <Link
                               href="/tasks"
-                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
+                              style={{
+                                color: "var(--twc-text)",
+                              }}
                               onClick={() => setOpenDropdown(false)}
                             >
-                              <ListTodo className="h-4 w-4 text-gray-500" />
+                              <ListTodo
+                                className="h-4 w-4"
+                                style={{ color: "var(--twc-muted)" }}
+                              />
                               <span className="truncate">{t.title}</span>
                             </Link>
                           </li>
@@ -223,7 +261,10 @@ export default function GlobalSearch() {
                   {/* Habits */}
                   {results.habits.length > 0 && (
                     <div className="px-2 pt-1">
-                      <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">
+                      <div
+                        className="text-[11px] uppercase tracking-wide mb-1"
+                        style={{ color: "var(--twc-muted)" }}
+                      >
                         Habits
                       </div>
                       <ul className="space-y-1">
@@ -231,10 +272,16 @@ export default function GlobalSearch() {
                           <li key={h.id}>
                             <Link
                               href="/habits"
-                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
+                              style={{
+                                color: "var(--twc-text)",
+                              }}
                               onClick={() => setOpenDropdown(false)}
                             >
-                              <Activity className="h-4 w-4 text-gray-500" />
+                              <Activity
+                                className="h-4 w-4"
+                                style={{ color: "var(--twc-muted)" }}
+                              />
                               <span className="truncate">{h.name}</span>
                             </Link>
                           </li>
@@ -246,7 +293,10 @@ export default function GlobalSearch() {
                   {/* Goals */}
                   {results.goals.length > 0 && (
                     <div className="px-2 pt-1">
-                      <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">
+                      <div
+                        className="text-[11px] uppercase tracking-wide mb-1"
+                        style={{ color: "var(--twc-muted)" }}
+                      >
                         Goals
                       </div>
                       <ul className="space-y-1">
@@ -254,10 +304,16 @@ export default function GlobalSearch() {
                           <li key={g.id}>
                             <Link
                               href="/goals"
-                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
+                              style={{
+                                color: "var(--twc-text)",
+                              }}
                               onClick={() => setOpenDropdown(false)}
                             >
-                              <Target className="h-4 w-4 text-gray-500" />
+                              <Target
+                                className="h-4 w-4"
+                                style={{ color: "var(--twc-muted)" }}
+                              />
                               <span className="truncate">{g.title}</span>
                             </Link>
                           </li>
@@ -274,25 +330,49 @@ export default function GlobalSearch() {
 
       {/* Mobile icon button that opens overlay */}
       <button
-        className="md:hidden inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm"
+        className="md:hidden inline-flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm"
+        style={{
+          borderColor: "var(--twc-border)",
+          backgroundColor: "var(--twc-surface)",
+          color: "var(--twc-text)",
+        }}
         onClick={() => setOpenMobile(true)}
         aria-label="Open search"
       >
-        <Search className="h-5 w-5 text-gray-700" />
+        <Search className="h-5 w-5" style={{ color: "var(--twc-muted)" }} />
       </button>
 
-      {/* Mobile overlay – minimal & slick */}
+      {/* Mobile overlay */}
       {openMobile && (
-        <div className="fixed inset-0 z-[60] bg-white/70 backdrop-blur">
+        <div
+          className="fixed inset-0 z-[60] backdrop-blur"
+          style={{
+            backgroundColor:
+              "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          }}
+        >
           <div className="absolute inset-x-0 top-0 mx-auto w-full max-w-xl p-4">
-            <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 shadow">
-              <Search className="h-4 w-4 text-gray-500" />
+            <div
+              className="flex items-center gap-2 rounded-full border px-3 py-2 shadow"
+              style={{
+                borderColor: "var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+              }}
+            >
+              <Search
+                className="h-4 w-4"
+                style={{ color: "var(--twc-muted)" }}
+              />
               <input
                 id="mobile-search-input"
                 type="text"
                 placeholder="Search"
                 aria-label="Global search"
-                className="w-full outline-none placeholder:text-gray-400 text-sm hide-native-clear"
+                className="w-full outline-none text-sm hide-native-clear"
+                style={{
+                  color: "var(--twc-text)",
+                  background: "transparent",
+                }}
                 value={q}
                 onChange={(e) => setQ(e.currentTarget.value)}
                 autoFocus
@@ -300,40 +380,59 @@ export default function GlobalSearch() {
               {q && (
                 <button
                   aria-label="Clear"
-                  className="rounded p-1 hover:bg-gray-100"
+                  className="rounded p-1 transition-colors"
+                  style={{ color: "var(--twc-muted)" }}
                   onClick={() => setQ("")}
                 >
-                  <X className="h-5 w-5 text-gray-700" />
+                  <X className="h-5 w-5" />
                 </button>
               )}
               <button
                 aria-label="Close"
-                className="rounded p-1 hover:bg-gray-100"
+                className="rounded p-1 transition-colors"
+                style={{ color: "var(--twc-muted)" }}
                 onClick={() => {
                   setOpenMobile(false);
                   reset();
                 }}
               >
-                <X className="h-5 w-5 text-gray-700" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-3 rounded-2xl border border-gray-200 bg-white shadow max-h-[65vh] overflow-auto">
+            <div
+              className="mt-3 rounded-2xl border shadow max-h-[65vh] overflow-auto"
+              style={{
+                borderColor: "var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+              }}
+            >
               <div className="p-2">
                 {loading ? (
-                  <div className="px-2 py-3 text-sm text-gray-600">
+                  <div
+                    className="px-2 py-3 text-sm"
+                    style={{ color: "var(--twc-muted)" }}
+                  >
                     Searching…
                   </div>
                 ) : error ? (
-                  <div className="px-2 py-3 text-sm text-red-600">{error}</div>
+                  <div
+                    className="px-2 py-3 text-sm"
+                    style={{ color: "var(--twc-danger)" }}
+                  >
+                    {error}
+                  </div>
                 ) : mobileList.length === 0 ? (
-                  <div className="px-2 py-6 text-sm text-center text-gray-600">
+                  <div
+                    className="px-2 py-6 text-sm text-center"
+                    style={{ color: "var(--twc-muted)" }}
+                  >
                     {q.trim().length < 2
                       ? "Type at least 2 characters"
                       : "No results"}
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-100">
+                  <ul>
                     {mobileList.map((item) => (
                       <li key={`${item.type}-${item.id}`}>
                         <Link
@@ -344,7 +443,10 @@ export default function GlobalSearch() {
                               ? "/habits"
                               : "/goals"
                           }
-                          className="flex items-center gap-2 px-3 py-3 hover:bg-gray-50"
+                          className="flex items-center gap-2 px-3 py-3 transition-colors"
+                          style={{
+                            color: "var(--twc-text)",
+                          }}
                           onClick={() => {
                             setOpenMobile(false);
                             reset();
