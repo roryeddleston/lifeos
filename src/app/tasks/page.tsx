@@ -45,7 +45,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const tasksDb = await prisma.task.findMany({
     where,
     orderBy: [
-      // Use proper Prisma types (no `any`)
       { dueDate: { sort: "asc", nulls: "last" } as Prisma.SortOrderInput },
       { createdAt: "asc" as Prisma.SortOrder },
     ] as Prisma.TaskOrderByWithRelationInput[],
@@ -82,7 +81,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
           className="rounded-xl"
           style={{
             backgroundColor: "var(--twc-surface)",
-            // keep single outline (avoid double)
             border: "none",
           }}
         >
