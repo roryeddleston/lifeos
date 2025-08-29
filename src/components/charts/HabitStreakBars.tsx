@@ -8,7 +8,7 @@ export default function HabitStreakBars({ data }: { data: StreakDatum[] }) {
   return (
     <div className="w-full">
       {/* Column headers */}
-      <div className="grid grid-cols-[minmax(140px,1fr)_5fr_auto] gap-3 mb-2 text-xs font-medium tracking-wide text-[color-mix(in_oklab,var(--twc-text)_65%,transparent)]">
+      <div className="grid grid-cols-[minmax(140px,1fr)_5fr_auto] gap-3 mb-4 text-xs font-medium tracking-wide text-[color-mix(in_oklab,var(--twc-text)_65%,transparent)]">
         <div>Habit</div>
         <div></div>
         <div className="text-right">Streak</div>

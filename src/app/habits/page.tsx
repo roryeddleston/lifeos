@@ -254,7 +254,13 @@ export default async function HabitsPage() {
 
       <Card className="p-0">
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
-          <div />
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--twc-muted)" }}
+          >
+            Habits
+          </div>
+
           <div className="w-[17rem]">
             <div className="grid grid-cols-7 gap-2">
               {days.map((d) => (
@@ -279,7 +285,6 @@ export default async function HabitsPage() {
           <div className="w-8" aria-hidden />
         </div>
 
-        {/* List with faint separators (like tasks table) */}
         {view.length === 0 ? (
           <div className="px-4 py-16">
             <div

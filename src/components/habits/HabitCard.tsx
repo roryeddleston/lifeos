@@ -1,4 +1,3 @@
-// src/components/habits/HabitCard.tsx
 "use client";
 
 import { useState, useTransition } from "react";
