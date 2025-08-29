@@ -68,7 +68,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       {/* Heading */}
       <div className="px-0 pt-4">
-        <h2 className="text-2xl font-medium tracking-tight">To-do&apos;s</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">To-do&apos;s</h2>
       </div>
 
       {/* Filters */}

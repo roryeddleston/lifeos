@@ -29,7 +29,7 @@ export default async function GoalsPage() {
       {/* Heading */}
       <div className="px-4 pt-2">
         <h1
-          className="text-2xl font-medium tracking-tight"
+          className="text-2xl font-semibold tracking-tight"
           style={{ color: "var(--twc-text)" }}
         >
           Goals
