@@ -178,9 +178,7 @@ type TopbarProps = {
 };
 
 export default function Topbar(props: TopbarProps) {
-  // Only read what we actually use to avoid "unused var" lint
   const { showSearch = true } = props;
-
   const [today, setToday] = useState<string>("");
 
   useEffect(() => {
@@ -195,36 +193,39 @@ export default function Topbar(props: TopbarProps) {
         backgroundColor: "color-mix(in oklab, var(--twc-bg) 80%, transparent)",
       }}
     >
-      <div className="mx-auto max-w-6xl px-4 py-3 grid grid-cols-2 gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
-        {/* Center: Search */}
-        <div className="order-last md:order-none md:justify-self-center">
-          {showSearch && <GlobalSearch />}
-        </div>
+      <div className="mx-auto max-w-6xl w-full px-3 md:px-4">
+        {/* Row: search left, everything else right */}
+        <div className="h-14 md:h-[60px] flex items-center justify-between gap-3">
+          {/* LEFT: search */}
+          <div className="min-w-0">{showSearch && <GlobalSearch />}</div>
 
-        {/* Right: date & weather */}
-        <div
-          className="hidden md:flex items-center gap-3 text-sm"
-          style={{ color: "var(--twc-text)" }}
-        >
-          <span
-            className="inline-flex items-center gap-1 rounded-full border px-3 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            style={{
-              borderColor: "var(--twc-border)",
-              backgroundColor: "var(--twc-surface)",
-              color: "var(--twc-text)",
-            }}
-            suppressHydrationWarning
-          >
-            <CalendarDays className="h-4 w-4 opacity-80" />
-            {today || "\u00A0"}
-          </span>
-          <WeatherPill />
-        </div>
+          {/* RIGHT: date+weather + actions */}
+          <div className="flex items-center gap-3">
+            <div
+              className="hidden md:flex items-center gap-3 text-sm"
+              style={{ color: "var(--twc-text)" }}
+            >
+              <span
+                className="inline-flex items-center gap-1 rounded-full border px-3 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{
+                  borderColor: "var(--twc-border)",
+                  backgroundColor: "var(--twc-surface)",
+                  color: "var(--twc-text)",
+                }}
+                suppressHydrationWarning
+              >
+                <CalendarDays className="h-4 w-4 opacity-80" />
+                {today || "\u00A0"}
+              </span>
+              <WeatherPill />
+            </div>
 
-        {/* Actions */}
-        <div className="col-span-2 md:col-span-1 flex items-center justify-end gap-2">
-          <ThemeToggle />
-          <QuickAdd />
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <QuickAdd />
+            </div>
+          </div>
         </div>
       </div>
     </header>
