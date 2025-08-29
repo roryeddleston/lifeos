@@ -3,7 +3,7 @@
 import { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
-import { Trash2 } from "lucide-react";
+import TrashButton from "@/components/ui/TrashButton";
 
 export default function RowActions({
   id,
@@ -76,29 +76,12 @@ export default function RowActions({
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <button
-        type="button"
+      <TrashButton
         onClick={handleDelete}
         disabled={loading}
-        className="p-1 rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 inline-flex"
-        style={{
-          color: "var(--twc-danger)",
-          backgroundColor:
-            "color-mix(in oklab, var(--twc-danger) 0%, var(--twc-surface))",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor =
-            "color-mix(in oklab, var(--twc-danger) 10%, var(--twc-surface))";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor =
-            "color-mix(in oklab, var(--twc-danger) 0%, var(--twc-surface))";
-        }}
         aria-label="Delete task"
         title="Delete task"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      />
     </div>
   );
 }
