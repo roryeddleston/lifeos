@@ -8,7 +8,7 @@ export default function HabitStreakBars({ data }: { data: Row[] }) {
     <div className="space-y-3">
       {/* Column headers */}
       <div
-        className="px-1 grid grid-cols-[minmax(0,1fr)_5rem] gap-3 text-xs"
+        className="grid grid-cols-[minmax(0,1fr)_5rem] gap-4 text-xs"
         style={{ color: "var(--twc-muted)" }}
       >
         <div>Habit</div>
@@ -16,45 +16,43 @@ export default function HabitStreakBars({ data }: { data: Row[] }) {
       </div>
 
       {/* Rows */}
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {sorted.map((row, idx) => {
           const pct = Math.round((row.streak / max) * 100);
           return (
-            <li
-              key={`${row.name}-${idx}`}
-              className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-3"
-            >
-              <div className="min-w-0">
+            <li key={`${row.name}-${idx}`} className="space-y-1">
+              {/* Name + Streak inline */}
+              <div className="grid grid-cols-[minmax(0,1fr)_5rem] gap-4 items-center">
                 <div
-                  className="h-2 w-full rounded-full"
-                  style={{
-                    backgroundColor:
-                      "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
-                  }}
-                  aria-label={`${row.name} streak ${row.streak}`}
-                >
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: "var(--twc-accent)",
-                    }}
-                  />
-                </div>
-                <div
-                  className="mt-1 truncate text-xs"
+                  className="truncate text-sm"
                   style={{ color: "var(--twc-text)" }}
                   title={row.name}
                 >
                   {row.name}
                 </div>
+                <div
+                  className="text-right tabular-nums text-sm font-medium"
+                  style={{ color: "var(--twc-text)" }}
+                >
+                  {row.streak}
+                </div>
               </div>
 
+              {/* Bar underneath spanning full width */}
               <div
-                className="text-right tabular-nums text-sm font-medium"
-                style={{ color: "var(--twc-text)" }}
+                className="h-2 w-full rounded-full"
+                style={{
+                  backgroundColor:
+                    "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
+                }}
               >
-                {row.streak}
+                <div
+                  className="h-2 rounded-full"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: "var(--twc-accent)",
+                  }}
+                />
               </div>
             </li>
           );
