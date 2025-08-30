@@ -1,3 +1,5 @@
+"use client";
+
 import type { LucideIcon } from "lucide-react";
 
 export default function StatCard({
@@ -8,7 +10,7 @@ export default function StatCard({
   icon: Icon,
 }: {
   label: string;
-  value: number | string;
+  value: number | string; // can be animated number, or "n/x"
   delta?: string;
   positive?: boolean;
   icon: LucideIcon;
@@ -21,7 +23,7 @@ export default function StatCard({
         backgroundColor: "var(--twc-surface)",
       }}
     >
-      {/* Icon pill — matches ComingSoon */}
+      {/* Icon — matches ComingSoon colouring */}
       <div
         className="rounded-lg p-2 flex-shrink-0"
         style={{
@@ -32,7 +34,7 @@ export default function StatCard({
         <Icon className="w-5 h-5" />
       </div>
 
-      {/* Textual content */}
+      {/* Text */}
       <div className="flex-1">
         <div
           className="text-sm font-medium"

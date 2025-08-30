@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
-import StatCardsRow from "@/components/dashboard/StatCardsRow";
+import StatCardsRow, {
+  type StatItem,
+} from "@/components/dashboard/StatCardsRow";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import HabitStreakBars from "@/components/dashboard/HabitStreakBars";
 import RecentlyCompleted from "@/components/dashboard/RecentlyCompleted";
 import ComingSoon from "@/components/dashboard/ComingSoon";
-import { Activity, ListTodo, Target } from "lucide-react";
 
-// ---- Helpers (UTC day math) ----
+/* ---------- UTC day helpers ---------- */
 function startOfDayUTC(d = new Date()) {
   return new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
@@ -36,7 +37,7 @@ export default async function Home() {
   const today = startOfDayUTC();
   const since = addDays(today, -60);
 
-  // Habits for streaks + today count
+  // Habits (for streaks + today count)
   const habits = await prisma.habit.findMany({
     orderBy: { createdAt: "asc" },
     include: {
@@ -63,7 +64,7 @@ export default async function Home() {
     return sum + (hasToday ? 1 : 0);
   }, 0);
 
-  // Recently completed tasks (format time on server to avoid hydration issues)
+  // Recently completed tasks
   const recentCompletedDb = await prisma.task.findMany({
     where: { status: "DONE", completedAt: { not: null } },
     orderBy: { completedAt: "desc" },
@@ -82,36 +83,38 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // Placeholder stats you already had
+  // Placeholder stats (same values you had before, but split for animation)
   const openTasks = 12;
-  const goalsOnTrack = "2/4";
+  const goalsOnTrackCurrent = 2;
+  const goalsOnTrackTotal = 4;
+
+  const statItems: StatItem[] = [
+    {
+      label: "Habits completed (today)",
+      value: habitsCompletedToday,
+      positive: true,
+      iconKey: "activity",
+    },
+    {
+      label: "Open tasks",
+      value: openTasks,
+      positive: false,
+      iconKey: "tasks",
+    },
+    {
+      label: "Goals on track",
+      value: goalsOnTrackCurrent, // this part animates
+      total: goalsOnTrackTotal, // this stays fixed “/x”
+      positive: true,
+      iconKey: "target",
+    },
+  ];
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
       <DashboardHeader />
 
-      <StatCardsRow
-        items={[
-          {
-            label: "Habits completed (today)",
-            value: habitsCompletedToday,
-            positive: true,
-            icon: Activity,
-          },
-          {
-            label: "Open tasks",
-            value: openTasks,
-            positive: false,
-            icon: ListTodo,
-          },
-          {
-            label: "Goals on track",
-            value: goalsOnTrack,
-            positive: true,
-            icon: Target,
-          },
-        ]}
-      />
+      <StatCardsRow items={statItems} />
 
       {/* Habit streak bars */}
       <Card
