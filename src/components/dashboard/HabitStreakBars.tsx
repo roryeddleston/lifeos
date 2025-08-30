@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 
 type Row = { name: string; streak: number };
 
+function capitalizeFirstChar(s: string) {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function HabitStreakBars({ data }: { data: Row[] }) {
   const sorted = [...data].sort((a, b) => b.streak - a.streak);
   const max = Math.max(1, ...sorted.map((d) => d.streak));
@@ -35,17 +40,18 @@ export default function HabitStreakBars({ data }: { data: Row[] }) {
         {sorted.map((row, idx) => {
           const pct = Math.round((row.streak / max) * 100);
           const targetWidth = `${pct}%`;
+          const displayName = capitalizeFirstChar(row.name);
 
           return (
             <li key={`${row.name}-${idx}`} className="space-y-1">
               {/* Name + Streak inline */}
               <div className="grid grid-cols-[minmax(0,1fr)_5rem] gap-4 items-center">
                 <div
-                  className="truncate text-sm capitalize"
+                  className="truncate text-sm"
                   style={{ color: "var(--twc-text)" }}
                   title={row.name}
                 >
-                  {row.name}
+                  {displayName}
                 </div>
                 <div
                   className="text-right tabular-nums text-sm font-medium"
