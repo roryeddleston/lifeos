@@ -25,9 +25,9 @@ export default async function GoalsPage() {
   const completedCount = completed.length;
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 md:px-6 py-6 space-y-8">
       {/* Heading */}
-      <div className="px-4 pt-2">
+      <header className="px-1">
         <h1
           className="text-2xl font-semibold tracking-tight"
           style={{ color: "var(--twc-text)" }}
@@ -47,7 +47,7 @@ export default async function GoalsPage() {
               : "no deadlines"}
           </p>
         )}
-      </div>
+      </header>
 
       {/* Tabs: Active / Completed */}
       <GoalsTabs active={active} completed={completed} />

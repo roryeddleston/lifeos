@@ -23,10 +23,10 @@ export default function Card({
       }}
     >
       {(title || subtitle) && (
-        <header className="px-4 pt-4">
+        <header className="px-8 pt-8">
           {title && (
             <h3
-              className="text-sm font-semibold"
+              className="text-lg font-semibold"
               style={{ color: "var(--twc-text)" }}
             >
               {title}

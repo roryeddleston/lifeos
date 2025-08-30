@@ -1,14 +1,4 @@
-import { type ElementType } from "react";
-import Card from "./Card";
-
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  delta?: string; // e.g. "+12%" or "-3"
-  positive?: boolean; // controls delta color
-  icon?: ElementType; // lucide icon component
-  className?: string;
-};
+import type { LucideIcon } from "lucide-react";
 
 export default function StatCard({
   label,
@@ -16,54 +6,57 @@ export default function StatCard({
   delta,
   positive,
   icon: Icon,
-  className = "",
-}: StatCardProps) {
+}: {
+  label: string;
+  value: number | string;
+  delta?: string;
+  positive?: boolean;
+  icon: LucideIcon;
+}) {
   return (
-    <Card className={className}>
-      <div className="flex items-start gap-3">
-        {Icon && (
+    <div
+      className="rounded-xl border p-4 flex items-start gap-3 transition-colors"
+      style={{
+        borderColor: "var(--twc-border)",
+        backgroundColor: "var(--twc-surface)",
+      }}
+    >
+      {/* Icon pill — matches ComingSoon */}
+      <div
+        className="rounded-lg p-2 flex-shrink-0"
+        style={{
+          background: "color-mix(in oklab, var(--twc-accent) 12%, transparent)",
+          color: "var(--twc-accent)",
+        }}
+      >
+        <Icon className="w-5 h-5" />
+      </div>
+
+      {/* Textual content */}
+      <div className="flex-1">
+        <div
+          className="text-sm font-medium"
+          style={{ color: "var(--twc-muted)" }}
+        >
+          {label}
+        </div>
+        <div
+          className="mt-1 text-lg font-semibold tabular-nums"
+          style={{ color: "var(--twc-text)" }}
+        >
+          {value}
+        </div>
+        {delta && (
           <div
-            className="rounded-lg p-2"
+            className="mt-1 text-xs font-medium"
             style={{
-              backgroundColor:
-                "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
-              border: "1px solid var(--twc-border)",
-              color: "var(--twc-text)",
+              color: positive ? "var(--twc-success)" : "var(--twc-danger)",
             }}
           >
-            <Icon size={18} />
+            {delta}
           </div>
         )}
-
-        <div className="flex-1">
-          <p className="text-xs" style={{ color: "var(--twc-muted)" }}>
-            {label}
-          </p>
-
-          <div className="mt-1 flex items-baseline gap-2">
-            <span
-              className="text-xl font-semibold"
-              style={{ color: "var(--twc-text)" }}
-            >
-              {value}
-            </span>
-
-            {delta && (
-              <span
-                className="text-xs"
-                style={{
-                  color: positive
-                    ? "var(--twc-accent)"
-                    : "color-mix(in oklab, #ef4444 85%, var(--twc-text))",
-                }}
-                aria-label={positive ? "increase" : "decrease"}
-              >
-                {delta}
-              </span>
-            )}
-          </div>
-        </div>
       </div>
-    </Card>
+    </div>
   );
 }
