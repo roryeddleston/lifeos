@@ -31,8 +31,9 @@
   --text: #e5e7eb;
   --border: #1f2937;
 
-  --accent: #06b6d4; /* cyan-500 */
-  --accent-contrast: #04212a;
+  /* CHANGED: use the same teal accent as light mode */
+  --accent: #14b8a6; /* teal-500 */
+  --accent-contrast: #053237;
 
   --primary: #e5e7eb;
   --primary-contrast: #0b0f1a;
@@ -52,8 +53,9 @@
   --text: #e6eefb;
   --border: #1e2a3d;
 
-  --accent: #11b5e5; /* cyan/teal */
-  --accent-contrast: #04212a;
+  /* CHANGED: unify accent with light mode teal */
+  --accent: #14b8a6; /* teal-500 */
+  --accent-contrast: #053237;
 
   --primary: #0b5ed7;
   --primary-contrast: #ffffff;
