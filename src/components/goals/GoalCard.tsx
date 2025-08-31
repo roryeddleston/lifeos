@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, Calculator } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
@@ -25,6 +25,17 @@ export default function GoalCard({ goal }: { goal: Goal }) {
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState(goal);
+
+  // --- animation like HabitStreakBars ---
+  const [ready, setReady] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    setReduced(!!mql?.matches);
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  // --------------------------------------
 
   // custom adjust panel
   const [customOpen, setCustomOpen] = useState(false);
@@ -115,6 +126,13 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     backgroundColor: "var(--twc-surface)",
   };
 
+  // compute animated width (0% on first paint, then target; still animates on updates)
+  const targetWidth = `${pct}%`;
+  const animatedWidth = reduced ? targetWidth : ready ? targetWidth : "0%";
+  const transition = reduced
+    ? "none"
+    : "width 2000ms cubic-bezier(0.22, 1, 0.36, 1)";
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
       {/* Left: title + meta + progress */}
@@ -143,7 +161,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           )}
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar (animated) */}
         <div
           className="mt-2 h-2 w-full rounded-full"
           style={{
@@ -152,9 +170,17 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           }}
         >
           <div
-            className="h-2 rounded-full transition-all"
-            style={{ width: `${pct}%`, backgroundColor: "var(--twc-accent)" }}
+            className="h-2 rounded-full"
+            style={{
+              width: animatedWidth,
+              backgroundColor: "var(--twc-accent)",
+              transition,
+            }}
             aria-label="Progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            role="progressbar"
           />
         </div>
 
