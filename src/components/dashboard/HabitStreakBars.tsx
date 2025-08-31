@@ -10,6 +10,28 @@ function capitalizeFirstChar(s: string) {
 }
 
 export default function HabitStreakBars({ data }: { data: Row[] }) {
+  // Empty state — render a formatted placeholder block
+  if (!data || data.length === 0) {
+    return (
+      <div
+        className="rounded-lg p-4 md:p-5 text-sm"
+        role="status"
+        aria-live="polite"
+        style={{
+          border: "1px solid var(--twc-border)",
+          background: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          color: "var(--twc-text)",
+        }}
+      >
+        <div className="font-medium">No streaks yet</div>
+        <p className="mt-1" style={{ color: "var(--twc-muted)" }}>
+          Create a habit and mark it complete on consecutive days to see streaks
+          here.
+        </p>
+      </div>
+    );
+  }
+
   const sorted = [...data].sort((a, b) => b.streak - a.streak);
   const max = Math.max(1, ...sorted.map((d) => d.streak));
 
