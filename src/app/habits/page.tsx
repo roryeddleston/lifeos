@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
+import StreakMetric from "@/components/habits/StreakMetric";
+import SparkBars from "@/components/habits/SparkBars";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,7 @@ function addDays(d: Date, n: number) {
   return copy;
 }
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  return d.toISOString().slice(0, 10);
 }
 function maxRun(arr: boolean[]) {
   let best = 0,
@@ -34,8 +36,8 @@ function maxRun(arr: boolean[]) {
 
 export default async function HabitsPage() {
   const today = startOfDayUTC();
-  const start = addDays(today, -6); // last 7 days
-  const end = addDays(today, 1); // < end
+  const start = addDays(today, -6);
+  const end = addDays(today, 1);
 
   const habits = await prisma.habit.findMany({
     orderBy: { createdAt: "asc" },
@@ -47,7 +49,6 @@ export default async function HabitsPage() {
     },
   });
 
-  // Shared 7-day window (oldest -> newest)
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = addDays(start, i);
     return {
@@ -63,13 +64,10 @@ export default async function HabitsPage() {
   const view = habits.map((h) => {
     const map = new Map<string, boolean>();
     for (const r of h.records) map.set(toISODate(r.date), !!r.completed);
-
     const timeline = days.map((d) => ({
       iso: d.iso,
       completed: map.get(d.iso) ?? false,
     }));
-
-    // current streak within the 7-day window
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
@@ -78,7 +76,6 @@ export default async function HabitsPage() {
     return { id: h.id, name: h.name, timeline, streak };
   });
 
-  // ---------- Live insights (based on last 7 days) ----------
   const totalCells = view.length * days.length;
   const completedCells = view.reduce(
     (sum, h) => sum + h.timeline.filter((t) => t.completed).length,
@@ -96,21 +93,18 @@ export default async function HabitsPage() {
   const perDayCounts = days.map((_, idx) =>
     view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
   );
-  const chartMax = Math.max(1, ...perDayCounts);
   const chartHeight = 35;
   const barWidth = 12;
   const gap = 8;
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
-      {/* Heading */}
       <header className="px-1">
         <h2 className="text-2xl font-semibold tracking-tight">Habits</h2>
       </header>
 
-      {/* Charts/Insights */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Completion Summary (animated) */}
+        {/* This Week — animates via CSS class inside the client component */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -127,7 +121,7 @@ export default async function HabitsPage() {
               <div
                 className="h-2 rounded-full progress-fill"
                 style={{
-                  width: `${completionPct}%`, // final width (animation scales from 0 -> 1)
+                  width: `${completionPct}%`,
                   backgroundColor: "var(--twc-accent)",
                 }}
                 aria-label={`${completionPct}% completion`}
@@ -146,100 +140,31 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Streaks */}
+        {/* Streaks — animated numbers via StreakMetric (client component) */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Streaks</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Best current and best 7-day streaks
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div
-              className="rounded-lg p-3"
-              style={{
-                border: "1px solid var(--twc-border)",
-                backgroundColor: "var(--twc-surface)",
-              }}
-            >
-              <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
-                Current (max)
-              </div>
-              <div className="mt-1 text-lg font-semibold">
-                {currentStreakMax} {currentStreakMax === 1 ? "day" : "days"}
-              </div>
-            </div>
-            <div
-              className="rounded-lg p-3"
-              style={{
-                border: "1px solid var(--twc-border)",
-                backgroundColor: "var(--twc-surface)",
-              }}
-            >
-              <div className="text-xs" style={{ color: "var(--twc-muted)" }}>
-                Best (last 7 days)
-              </div>
-              <div className="mt-1 text-lg font-semibold">
-                {bestStreakMax} {bestStreakMax === 1 ? "day" : "days"}
-              </div>
-            </div>
+            <StreakMetric label="Current (max)" value={currentStreakMax} />
+            <StreakMetric label="Best (last 7 days)" value={bestStreakMax} />
           </div>
         </Card>
 
-        {/* Last 7 Days */}
+        {/* Last 7 Days — animated spark bars */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Daily total completions across all habits
           </p>
           <div className="mt-4">
-            <svg
-              viewBox={`0 0 ${7 * (barWidth + gap) - gap} ${chartHeight + 5}`}
-              className="w-full block"
-            >
-              {/* guide lines */}
-              <line
-                x1="0"
-                y1={chartHeight}
-                x2={7 * (barWidth + gap) - gap}
-                y2={chartHeight}
-                stroke="color-mix(in oklab, var(--twc-text) 8%, transparent)"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1={Math.round(chartHeight * 0.5)}
-                x2={7 * (barWidth + gap) - gap}
-                y2={Math.round(chartHeight * 0.5)}
-                stroke="color-mix(in oklab, var(--twc-text) 6%, transparent)"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1={Math.round(chartHeight * 0.15)}
-                x2={7 * (barWidth + gap) - gap}
-                y2={Math.round(chartHeight * 0.15)}
-                stroke="color-mix(in oklab, var(--twc-text) 4%, transparent)"
-                strokeWidth="1"
-              />
-              {perDayCounts.map((count, i) => {
-                const height =
-                  chartMax > 0
-                    ? Math.round((count / chartMax) * chartHeight)
-                    : 0;
-                const x = i * (barWidth + gap);
-                const y = chartHeight - height;
-                return (
-                  <rect
-                    key={i}
-                    x={x}
-                    y={y}
-                    width={barWidth}
-                    height={height}
-                    rx="2"
-                    fill="var(--twc-accent)"
-                  />
-                );
-              })}
-            </svg>
+            <SparkBars
+              counts={perDayCounts}
+              height={chartHeight}
+              barWidth={barWidth}
+              gap={gap}
+            />
             <div
               className="mt-2 grid grid-cols-7 text-center text-xs"
               style={{ color: "var(--twc-muted)" }}

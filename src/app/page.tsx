@@ -83,7 +83,7 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // Placeholder stats (same values you had before, but split for animation)
+  // Stats
   const openTasks = 12;
   const goalsOnTrackCurrent = 2;
   const goalsOnTrackTotal = 4;
@@ -103,8 +103,8 @@ export default async function Home() {
     },
     {
       label: "Goals on track",
-      value: goalsOnTrackCurrent, // this part animates
-      total: goalsOnTrackTotal, // this stays fixed “/x”
+      value: goalsOnTrackCurrent, // animates (your StatCardsRow can handle this)
+      total: goalsOnTrackTotal, // stays fixed “/x”
       positive: true,
       iconKey: "target",
     },

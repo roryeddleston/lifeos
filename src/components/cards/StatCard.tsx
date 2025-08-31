@@ -10,7 +10,7 @@ export default function StatCard({
   icon: Icon,
 }: {
   label: string;
-  value: number | string; // can be animated number, or "n/x"
+  value: React.ReactNode; // ⬅ allow <CountUp /> etc.
   delta?: string;
   positive?: boolean;
   icon: LucideIcon;

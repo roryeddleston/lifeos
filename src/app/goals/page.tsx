@@ -6,7 +6,6 @@ import { formatDueLabel } from "@/lib/date";
 export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
-  // Fetch from DB (deadline is Date | null here)
   const goalsDb = await prisma.goal.findMany({
     orderBy: { createdAt: "asc" },
   });
