@@ -41,7 +41,9 @@ export default async function HabitsPage() {
 
   const habits = await prisma.habit.findMany({
     orderBy: { createdAt: "asc" },
-    include: {
+    select: {
+      id: true,
+      name: true,
       records: {
         where: { date: { gte: start, lt: end } },
         select: { date: true, completed: true },
@@ -104,7 +106,7 @@ export default async function HabitsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* This Week — animates via CSS class inside the client component */}
+        {/* This Week */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -140,7 +142,7 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Streaks — animated numbers via StreakMetric (client component) */}
+        {/* Streaks */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Streaks</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -152,7 +154,7 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Last 7 Days — animated spark bars */}
+        {/* Last 7 Days */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>

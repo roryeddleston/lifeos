@@ -8,9 +8,20 @@ export const dynamic = "force-dynamic";
 export default async function GoalsPage() {
   const goalsDb = await prisma.goal.findMany({
     orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      targetValue: true,
+      currentValue: true,
+      unit: true,
+      deadline: true,
+      createdAt: true,
+      // userId not needed on this page render
+    },
   });
 
-  // Serialize deadline -> string | null for client components
+  // Serialize for client components where needed
   const goals = goalsDb.map((g) => ({
     ...g,
     deadline: g.deadline ? g.deadline.toISOString() : null,
@@ -25,7 +36,6 @@ export default async function GoalsPage() {
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
-      {/* Heading */}
       <header className="px-1">
         <h1
           className="text-2xl font-semibold tracking-tight"
@@ -48,10 +58,8 @@ export default async function GoalsPage() {
         )}
       </header>
 
-      {/* Tabs: Active / Completed */}
       <GoalsTabs active={active} completed={completed} />
 
-      {/* Add goal */}
       <QuickAddGoal />
     </div>
   );

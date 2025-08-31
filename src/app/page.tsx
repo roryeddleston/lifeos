@@ -37,24 +37,36 @@ export default async function Home() {
   const today = startOfDayUTC();
   const since = addDays(today, -60);
 
-  // Habits (for streaks + today count)
-  const habits = await prisma.habit.findMany({
-    orderBy: { createdAt: "asc" },
-    include: {
-      records: {
-        where: { date: { gte: since, lte: today }, completed: true },
-        select: { date: true },
+  // Run queries in parallel + select only the fields we render
+  const [habits, recentCompletedDb] = await Promise.all([
+    prisma.habit.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        records: {
+          where: { date: { gte: since, lte: today }, completed: true },
+          select: { date: true },
+        },
       },
-    },
-  });
+    }),
+    prisma.task.findMany({
+      where: { status: "DONE", completedAt: { not: null } },
+      orderBy: { completedAt: "desc" },
+      take: 5,
+      select: { id: true, title: true, completedAt: true },
+    }),
+  ]);
 
   const todayISO = today.toISOString().slice(0, 10);
+
   const streaks = habits.map((h) => {
     const completedSet = new Set(
       h.records.map((r) => r.date.toISOString().slice(0, 10))
     );
     const streak = currentStreakFromSet(completedSet, todayISO);
     return { id: h.id, name: h.name, streak };
+    // We only need {name, streak} for the chart component
   });
 
   const habitsCompletedToday = habits.reduce((sum, h) => {
@@ -64,13 +76,6 @@ export default async function Home() {
     return sum + (hasToday ? 1 : 0);
   }, 0);
 
-  // Recently completed tasks
-  const recentCompletedDb = await prisma.task.findMany({
-    where: { status: "DONE", completedAt: { not: null } },
-    orderBy: { completedAt: "desc" },
-    take: 5,
-    select: { id: true, title: true, completedAt: true },
-  });
   const timeFmt = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -83,7 +88,7 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // Stats
+  // (stubbed) Stats — unchanged for now
   const openTasks = 12;
   const goalsOnTrackCurrent = 2;
   const goalsOnTrackTotal = 4;
@@ -103,8 +108,8 @@ export default async function Home() {
     },
     {
       label: "Goals on track",
-      value: goalsOnTrackCurrent, // animates (your StatCardsRow can handle this)
-      total: goalsOnTrackTotal, // stays fixed “/x”
+      value: goalsOnTrackCurrent,
+      total: goalsOnTrackTotal,
       positive: true,
       iconKey: "target",
     },
@@ -116,7 +121,6 @@ export default async function Home() {
 
       <StatCardsRow items={statItems} />
 
-      {/* Habit streak bars */}
       <Card
         title="Weekly habit streaks"
         subtitle="Current streak by habit"
@@ -129,7 +133,6 @@ export default async function Home() {
         </div>
       </Card>
 
-      {/* Recently Completed */}
       <Card
         title="Recently completed"
         subtitle="Most recent 5 tasks you finished"
@@ -140,7 +143,6 @@ export default async function Home() {
         </div>
       </Card>
 
-      {/* Coming soon */}
       <Card
         title="Coming soon"
         subtitle="A peek at what's on the way"

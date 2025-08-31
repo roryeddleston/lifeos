@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
 type PageProps = {
-  // In App Router, searchParams is async now — model it as a Promise and await it.
+  // In App Router, searchParams is async now — treat it as a Promise and await.
   searchParams: Promise<{ view?: string }>;
 };
 
@@ -18,7 +18,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const { view: rawView } = await searchParams;
   const view = (rawView ?? "all").toLowerCase() as AllowedView;
 
-  // Build date helpers (server)
+  // Date helpers
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const addDays = (n: number) => {
@@ -27,11 +27,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
     return d;
   };
 
-  // Base WHERE: exclude DONE by default (except on "done" view)
+  // Base filter
   const where: Prisma.TaskWhereInput =
     view === "done" ? { status: "DONE" } : { status: { not: "DONE" } };
 
-  // Additional view-specific filters
+  // View-specific filters
   if (view === "today") {
     where.dueDate = { gte: today, lt: addDays(1) };
   } else if (view === "week") {
@@ -41,7 +41,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   }
   // 'all' => no extra dueDate filter
 
-  // Prisma query (dueDate is Date | null here)
   const tasksDb = await prisma.task.findMany({
     where,
     orderBy: [
@@ -55,9 +54,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
       status: true,
       position: true,
     },
+    // Optional protective cap if you expect huge lists:
+    // take: 500,
   });
 
-  // Serialize for client components: dueDate -> "YYYY-MM-DD" | null
+  // Serialize for client components: dates -> "YYYY-MM-DD" | null
   const tasks = tasksDb.map((t) => ({
     ...t,
     dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : null,
@@ -65,17 +66,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
-      {/* Heading */}
       <header className="px-1">
         <h2 className="text-2xl font-semibold tracking-tight">To-do&apos;s</h2>
       </header>
 
-      {/* Filters */}
       <div>
         <Filters />
       </div>
 
-      {/* Table */}
       <Card className="border-0 !shadow-none">
         <section
           className="rounded-xl"
@@ -90,7 +88,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </section>
       </Card>
 
-      {/* Quick add */}
       <QuickAdd />
     </div>
   );
