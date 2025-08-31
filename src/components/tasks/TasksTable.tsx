@@ -105,26 +105,41 @@ export default function TasksTable({
 
   const hasAny = view === "all" ? (grouped?.length ?? 0) > 0 : items.length > 0;
 
-  const SectionHeaderRow = ({ label }: { label: string }) => (
-    <tr
-      className="text-xs uppercase tracking-wide"
-      style={{
-        backgroundColor:
-          "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
-        color: "color-mix(in oklab, var(--twc-text) 70%, transparent)",
-      }}
-    >
-      {[
-        <td key="drag" className="py-2 pr-2 w-6" />,
-        <td key="chk" className="py-2 pr-2 w-10" />,
-        <td key="label" className="py-2 pr-4">
-          {label}
-        </td>,
-        <td key="due" className="py-2 pr-4" />,
-        <td key="actions" className="py-2 pr-0 text-right" />,
-      ]}
-    </tr>
-  );
+  // Accent these section headers
+  const ACCENT_SECTIONS = new Set(["Overdue", "Today", "This Week", "No date"]);
+
+  const SectionHeaderRow = ({ label }: { label: string }) => {
+    const isAccent = ACCENT_SECTIONS.has(label);
+    return (
+      <tr
+        className="text-xs uppercase tracking-wide"
+        style={
+          isAccent
+            ? {
+                // blue-green tint on dark, subtle on light because we mix with surface
+                background:
+                  "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-surface))",
+                color: "var(--twc-text)",
+              }
+            : {
+                background:
+                  "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
+                color: "color-mix(in oklab, var(--twc-text) 70%, transparent)",
+              }
+        }
+      >
+        {[
+          <td key="drag" className="py-2 pr-2 w-6" />,
+          <td key="chk" className="py-2 pr-2 w-10" />,
+          <td key="label" className="py-2 pr-4">
+            {label}
+          </td>,
+          <td key="due" className="py-2 pr-4" />,
+          <td key="actions" className="py-2 pr-0 text-right" />,
+        ]}
+      </tr>
+    );
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
