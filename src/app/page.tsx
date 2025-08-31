@@ -118,7 +118,7 @@ export default async function Home() {
 
       {/* Habit streak bars */}
       <Card
-        title="Weekly Habit Streaks"
+        title="Weekly habit streaks"
         subtitle="Current streak by habit"
         className="border"
       >
@@ -131,7 +131,7 @@ export default async function Home() {
 
       {/* Recently Completed */}
       <Card
-        title="Recently Completed"
+        title="Recently completed"
         subtitle="Most recent 5 tasks you finished"
         className="border"
       >
