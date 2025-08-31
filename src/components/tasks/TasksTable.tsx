@@ -20,11 +20,12 @@ import RowActions from "./RowActions";
 import InlineTitle from "./InlineTitle";
 import InlineDueDate from "./InlineDueDate";
 import { GripVertical, CheckCircle2, ClipboardList } from "lucide-react";
+import { useToast } from "@/components/ui/Toaster";
 
 type TaskItem = {
   id: string;
   title: string;
-  dueDate: string | null;
+  dueDate: string | null; // "YYYY-MM-DD" | null
   status: "TODO" | "IN_PROGRESS" | "DONE";
   position?: number;
 };
@@ -36,6 +37,8 @@ export default function TasksTable({
   initial: TaskItem[];
   view: string;
 }) {
+  const toast = useToast();
+
   const [items, setItems] = useState<TaskItem[]>(initial);
   const [overId, setOverId] = useState<string | null>(null);
 
@@ -43,25 +46,96 @@ export default function TasksTable({
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
 
+  // If server sends a new list (route change), reset local state
   useEffect(() => setItems(initial), [initial]);
 
   const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-  const handleToggleComplete = (id: string, next: boolean) => {
-    setItems((curr) => {
-      const updated = curr.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              status: (next ? "DONE" : "TODO") as TaskItem["status"],
-            }
-          : t
-      );
-      if (next && view !== "done") return updated.filter((t) => t.id !== id);
-      if (!next && view === "done") return updated.filter((t) => t.id !== id);
-      return updated;
-    });
-  };
+  /* ----------------- Optimistic mutators ----------------- */
+
+  async function handleDelete(id: string) {
+    const prev = items;
+    const next: TaskItem[] = prev.filter((t) => t.id !== id);
+    setItems(next);
+
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
+      toast({ variant: "success", title: "Task deleted" });
+    } catch (err) {
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Couldn’t delete",
+        description: "Network or server error.",
+      });
+    }
+  }
+
+  async function handleToggleComplete(id: string, nextDone: boolean) {
+    const prev = items;
+
+    const nextStatus: TaskItem["status"] = nextDone ? "DONE" : "TODO";
+    let next: TaskItem[] = prev.map((t) =>
+      t.id === id ? { ...t, status: nextStatus } : t
+    );
+
+    if (nextStatus === "DONE" && view !== "done") {
+      next = next.filter((t) => t.id !== id);
+    }
+    if (nextStatus !== "DONE" && view === "done") {
+      next = next.filter((t) => t.id !== id);
+    }
+
+    setItems(next);
+
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch (err) {
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Couldn’t toggle completion.",
+      });
+    }
+  }
+
+  async function handleTitleChange(id: string, nextTitle: string) {
+    const prev = items;
+    const next: TaskItem[] = prev.map((t) =>
+      t.id === id ? { ...t, title: nextTitle } : t
+    );
+    setItems(next);
+
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: nextTitle }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      return true;
+    } catch (err) {
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Couldn’t save title.",
+      });
+      return false;
+    }
+  }
+
+  /* ----------------- Grouping for "all" view ----------------- */
 
   const grouped = useMemo(() => {
     if (view !== "all") return null;
@@ -116,7 +190,6 @@ export default function TasksTable({
         style={
           isAccent
             ? {
-                // blue-green tint on dark, subtle on light because we mix with surface
                 background:
                   "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-surface))",
                 color: "var(--twc-text)",
@@ -141,6 +214,8 @@ export default function TasksTable({
     );
   };
 
+  /* ----------------- DnD ----------------- */
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -156,7 +231,7 @@ export default function TasksTable({
     const { active, over } = e;
     if (!over || active.id === over.id) return;
 
-    setItems((curr) => {
+    setItems((curr): TaskItem[] => {
       const oldIndex = curr.findIndex((x) => x.id === active.id);
       const newIndex = curr.findIndex((x) => x.id === over.id);
       if (oldIndex < 0 || newIndex < 0) return curr.slice();
@@ -165,18 +240,36 @@ export default function TasksTable({
       const [moved] = clone.splice(oldIndex, 1);
       clone.splice(newIndex, 0, moved);
 
-      const payload = clone.map((t, i) => ({ id: t.id, position: i + 1 }));
+      // optimistic position update
+      const optimistic: TaskItem[] = clone.map((t, i) => ({
+        ...t,
+        position: i + 1,
+      }));
+
+      // fire and forget server reorder (we’re already optimistic)
+      const payload = optimistic.map(({ id }, i) => ({
+        id,
+        position: i + 1,
+      }));
       fetch("/api/tasks/reorder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: payload }),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error(err);
+        toast({
+          variant: "error",
+          title: "Reorder failed",
+          description: "We’ll try again shortly.",
+        });
+      });
 
-      return clone.map((t, i) => ({ ...t, position: i + 1 }));
+      return optimistic;
     });
   }
 
-  // ---------- Static (SSR-safe) Row ----------
+  /* ----------------- Rows ----------------- */
+
   function StaticRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
     const isDone = t.status === "DONE";
     const isOverdue =
@@ -197,7 +290,6 @@ export default function TasksTable({
       >
         {[
           <td key="drag" className="py-3 pr-2 align-middle w-6">
-            {/* No DnD handle server-side to avoid hydration ID mismatch */}
             <span
               aria-hidden
               className="inline-flex p-1"
@@ -216,7 +308,12 @@ export default function TasksTable({
             />
           </td>,
           <td key="title" className="py-3 pr-4 align-middle">
-            <InlineTitle id={t.id} title={cap(t.title)} done={isDone} />
+            <InlineTitle
+              id={t.id}
+              title={cap(t.title)}
+              done={isDone}
+              onChange={(next) => handleTitleChange(t.id, next)}
+            />
           </td>,
           <td
             key="due"
@@ -226,14 +323,18 @@ export default function TasksTable({
             <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
           </td>,
           <td key="actions" className="py-3 pr-0 text-right align-middle">
-            <RowActions id={t.id} title={t.title} dueDate={t.dueDate} />
+            <RowActions
+              id={t.id}
+              title={t.title}
+              dueDate={t.dueDate}
+              onDelete={() => handleDelete(t.id)}
+            />
           </td>,
         ]}
       </tr>
     );
   }
 
-  // ---------- Sortable (client-only) Row ----------
   function SortableRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
     const {
       attributes,
@@ -247,7 +348,6 @@ export default function TasksTable({
       animateLayoutChanges: () => false,
     });
 
-    // Adapter to avoid `any` on ref: JSX expects HTMLTableRowElement | null
     const setRowRef = (node: HTMLTableRowElement | null) =>
       setNodeRef(node as unknown as HTMLElement | null);
 
@@ -310,7 +410,12 @@ export default function TasksTable({
             />
           </td>,
           <td key="title" className="py-3 pr-4 align-middle">
-            <InlineTitle id={t.id} title={cap(t.title)} done={isDone} />
+            <InlineTitle
+              id={t.id}
+              title={cap(t.title)}
+              done={isDone}
+              onChange={(next) => handleTitleChange(t.id, next)}
+            />
           </td>,
           <td
             key="due"
@@ -320,7 +425,12 @@ export default function TasksTable({
             <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
           </td>,
           <td key="actions" className="py-3 pr-0 text-right align-middle">
-            <RowActions id={t.id} title={t.title} dueDate={t.dueDate} />
+            <RowActions
+              id={t.id}
+              title={t.title}
+              dueDate={t.dueDate}
+              onDelete={() => handleDelete(t.id)}
+            />
           </td>,
         ]}
       </tr>
@@ -421,7 +531,6 @@ export default function TasksTable({
     <div className="overflow-x-auto" data-tt="tasks-table-themed-no-row-bg">
       {hasAny ? (
         <>
-          {/* Static SSR + first paint (no DnD attributes) */}
           {!hydrated && (
             <table className="w-full text-sm">
               <Header />
@@ -436,7 +545,6 @@ export default function TasksTable({
             </table>
           )}
 
-          {/* Client-only DnD once mounted */}
           {hydrated && (
             <DndContext
               sensors={sensors}

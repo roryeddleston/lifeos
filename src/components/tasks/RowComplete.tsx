@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, startTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function RowComplete({
-  id,
+  id: _id, // unused; prefix for ESLint
   completed,
   onToggle,
 }: {
@@ -12,20 +11,13 @@ export default function RowComplete({
   completed: boolean;
   onToggle?: (next: boolean) => void;
 }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function toggle(next: boolean) {
+  function toggle(next: boolean) {
     if (loading) return;
     setLoading(true);
-    onToggle?.(next);
     try {
-      await fetch(`/api/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next ? "DONE" : "TODO" }),
-      });
-      startTransition(() => router.refresh());
+      onToggle?.(next);
     } finally {
       setLoading(false);
     }

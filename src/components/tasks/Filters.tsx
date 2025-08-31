@@ -19,6 +19,7 @@ export default function Filters() {
   function setView(view: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view);
+    // push is fine here; if you prefer not to stack history, use replace
     router.push(`?${params.toString()}`);
   }
 
