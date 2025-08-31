@@ -1,93 +1,113 @@
+// src/app/api/habits/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
-// Ensure a pure UTC date-only timestamp (00:00:00Z)
-function startOfDayUTC(d: Date) {
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+/** Match your project’s pattern: params is a Promise and must be awaited */
+type RouteParams = { params: Promise<{ id: string }> };
+
+/* ---------------------- Validation Schemas ---------------------- */
+
+const PatchSchema = z.object({
+  // rename only (expand later as needed)
+  name: z.string().trim().min(1, "Name is required").max(200).optional(),
+});
+
+/* --------------------------- Helpers --------------------------- */
+
+function jsonError(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+) {
+  return NextResponse.json({ error: message, ...(extra ?? {}) }, { status });
+}
+
+function isPrismaNotFound(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025"
   );
 }
 
-type RouteParams = {
-  params: Promise<{ id: string; date: string }>;
-};
+/* ----------------------------- GET ----------------------------- */
+/** Fetch a single habit (minimal fields for UI) */
+export async function GET(_req: Request, { params }: RouteParams) {
+  const { id } = await params;
 
-type ToggleBody = { completed?: boolean } | null;
-
-export async function POST(req: Request, { params }: RouteParams) {
-  const { id, date } = await params;
-
-  // Expect :date as YYYY-MM-DD
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: "Invalid date param" }, { status: 400 });
-  }
-
-  // Construct UTC midnight for that calendar day
-  const when = new Date(`${date}T00:00:00.000Z`);
-  const dayUTC = startOfDayUTC(when);
-
-  // Optional body: { completed?: boolean }
-  let body: ToggleBody = null;
   try {
-    const raw: unknown = await req.json().catch(() => null);
-    if (raw && typeof raw === "object") {
-      const completed = (raw as Record<string, unknown>).completed;
-      if (typeof completed === "boolean") {
-        body = { completed };
-      }
-    }
+    const habit = await prisma.habit.findUnique({
+      where: { id },
+      select: { id: true, name: true, createdAt: true },
+    });
+
+    if (!habit) return jsonError("Not found", 404);
+    return NextResponse.json(habit, { status: 200 });
+  } catch (e: unknown) {
+    console.error("GET /api/habits/[id] failed:", e);
+    return jsonError("Failed to fetch habit", 500);
+  }
+}
+
+/* ---------------------------- PATCH ---------------------------- */
+/** Update habit — currently supports rename via { name } */
+export async function PATCH(req: Request, { params }: RouteParams) {
+  const { id } = await params;
+
+  let bodyUnknown: unknown;
+  try {
+    bodyUnknown = await req.json();
   } catch {
-    body = null;
+    return jsonError("Invalid JSON body", 400);
   }
 
-  const hasExplicit = !!body && typeof body.completed === "boolean";
-  const explicit: boolean | null = hasExplicit
-    ? Boolean(body!.completed)
-    : null;
+  const parsed = PatchSchema.safeParse(bodyUnknown);
+  if (!parsed.success) {
+    return jsonError("Validation error", 422, {
+      issues: parsed.error.flatten(),
+    });
+  }
+
+  const data: Record<string, unknown> = {};
+  if (parsed.data.name !== undefined) data.name = parsed.data.name;
+
+  if (Object.keys(data).length === 0) {
+    return jsonError("No valid fields to update", 400);
+  }
 
   try {
-    // Look up existing record for (habitId, date)
-    const existing = await prisma.habitRecord.findUnique({
-      where: {
-        // IMPORTANT: use the correct compound unique key name
-        habitId_date: {
-          habitId: id,
-          date: dayUTC,
-        },
-      },
+    const updated = await prisma.habit.update({
+      where: { id },
+      data,
+      select: { id: true, name: true },
     });
+    return NextResponse.json(updated, { status: 200 });
+  } catch (e: unknown) {
+    if (isPrismaNotFound(e)) {
+      return jsonError("Habit not found", 404);
+    }
+    console.error("PATCH /api/habits/[id] failed:", e);
+    return jsonError("Failed to update habit", 500);
+  }
+}
 
-    // Decide the next value: toggle if not explicitly provided
-    const nextCompleted = explicit ?? !Boolean(existing?.completed);
+/* --------------------------- DELETE ---------------------------- */
+/**
+ * Delete a habit.
+ * Prisma schema uses `onDelete: Cascade` on HabitRecord → Habit,
+ * so associated HabitRecord rows are removed automatically.
+ */
+export async function DELETE(_req: Request, { params }: RouteParams) {
+  const { id } = await params;
 
-    // Upsert to set the desired value
-    const saved = await prisma.habitRecord.upsert({
-      where: {
-        habitId_date: {
-          habitId: id,
-          date: dayUTC,
-        },
-      },
-      update: { completed: nextCompleted },
-      create: {
-        habitId: id,
-        date: dayUTC,
-        completed: nextCompleted,
-      },
-      select: {
-        id: true,
-        habitId: true,
-        date: true,
-        completed: true,
-      },
-    });
-
-    return NextResponse.json(saved, { status: 200 });
-  } catch (e) {
-    console.error("POST /api/habits/[id]/records/[date] failed", e);
-    return NextResponse.json(
-      { error: "Failed to update habit record" },
-      { status: 500 }
-    );
+  try {
+    await prisma.habit.delete({ where: { id } });
+    return new NextResponse(null, { status: 204 });
+  } catch (e: unknown) {
+    if (isPrismaNotFound(e)) {
+      return jsonError("Habit not found", 404);
+    }
+    console.error("DELETE /api/habits/[id] failed:", e);
+    return jsonError("Failed to delete habit", 500);
   }
 }
