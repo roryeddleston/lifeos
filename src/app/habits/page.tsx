@@ -18,11 +18,9 @@ function addDays(d: Date, n: number) {
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
 }
-
-// helper: best streak inside a boolean array
 function maxRun(arr: boolean[]) {
-  let best = 0;
-  let curr = 0;
+  let best = 0,
+    curr = 0;
   for (const v of arr) {
     if (v) {
       curr++;
@@ -54,7 +52,6 @@ export default async function HabitsPage() {
     const d = addDays(start, i);
     return {
       iso: toISODate(d),
-      // UTC to avoid any server/client timezone mismatch
       label: d.toLocaleDateString("en-GB", {
         weekday: "short",
         timeZone: "UTC",
@@ -72,7 +69,7 @@ export default async function HabitsPage() {
       completed: map.get(d.iso) ?? false,
     }));
 
-    // compute current streak (from newest back within this 7-day window)
+    // current streak within the 7-day window
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
@@ -113,7 +110,7 @@ export default async function HabitsPage() {
 
       {/* Charts/Insights */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Completion Summary */}
+        {/* Completion Summary (animated) */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -128,11 +125,13 @@ export default async function HabitsPage() {
               }}
             >
               <div
-                className="h-2 rounded-full"
+                className="h-2 rounded-full progress-fill"
                 style={{
-                  width: `${completionPct}%`,
+                  width: `${completionPct}%`, // final width (animation scales from 0 -> 1)
                   backgroundColor: "var(--twc-accent)",
                 }}
+                aria-label={`${completionPct}% completion`}
+                title={`${completionPct}% completion`}
               />
             </div>
             <div className="mt-2 text-xs" style={{ color: "var(--twc-muted)" }}>
@@ -185,6 +184,7 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
+        {/* Last 7 Days */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -252,6 +252,7 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
+      {/* Habit list */}
       <Card className="p-0">
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <div
@@ -260,7 +261,6 @@ export default async function HabitsPage() {
           >
             Habits
           </div>
-
           <div className="w-[17rem]">
             <div className="grid grid-cols-7 gap-2">
               {days.map((d) => (

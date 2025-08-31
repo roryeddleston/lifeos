@@ -116,3 +116,22 @@ html {
   background-color: var(--twc-surface);
   border: 1px solid var(--twc-border);
 }
+/* Progress bar animation shared utility */
+.progress-fill {
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: progressGrow 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes progressGrow {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    animation: none;
+    transform: none;
+  }
+}
