@@ -7,12 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/* -------------------- Habits -------------------- */
+
 model Habit {
   id         String        @id @default(cuid())
   name       String
   createdAt  DateTime      @default(now())
   records    HabitRecord[]
-  userId     String?
+  userId     String?       // will hold Auth0 `sub` later
+
+  // Listing and scoping by user; sort newest-first
+  @@index([userId, createdAt])
 }
 
 model HabitRecord {
@@ -23,8 +28,16 @@ model HabitRecord {
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   habitId   String
 
+  // One record per habit per day
   @@unique([habitId, date], name: "habitId_date")
+
+  // Common filters: by habit, completed flag, then date window
+  @@index([habitId, completed, date])
+  // Fallback for cross-habit date windows (dashboards)
+  @@index([date])
 }
+
+/* -------------------- Tasks -------------------- */
 
 enum TaskStatus {
   TODO
@@ -40,18 +53,33 @@ model Task {
   status      TaskStatus  @default(TODO)
   createdAt   DateTime    @default(now())
 
-  // manual sort order
+  // manual sort order (per user)
   position    Int         @default(0)
 
-  // per-user data scoping (auth-ready)
+  // per-user data scoping (Auth0-ready: store `sub` here)
   userId      String?
 
   // true completion timestamp (null until DONE)
   completedAt DateTime?
 
+  // Recently done lists
   @@index([status, completedAt])
-  @@index([userId, completedAt])
+
+  // Your views/filters: status + due windows (+ deterministic tie-breaker)
+  @@index([status, dueDate, createdAt])
+
+  // Per-user filters for list pages
+  @@index([userId, status, dueDate])
+  @@index([userId, createdAt])
+
+  // Efficient reorder within a user's list
+  @@index([userId, position])
+
+  // Simple helpers (keep dueDate indexed for direct range scans)
+  @@index([dueDate])
 }
+
+/* -------------------- Goals -------------------- */
 
 model Goal {
   id           String   @id @default(cuid())
@@ -62,5 +90,9 @@ model Goal {
   unit         String
   deadline     DateTime?
   createdAt    DateTime @default(now())
-  userId       String?
+  userId       String?  // Auth0 `sub` later
+
+  // Per-user upcoming and recent lists
+  @@index([userId, deadline])
+  @@index([userId, createdAt])
 }
