@@ -36,9 +36,16 @@ export const revalidate = 60;
 export default async function Home() {
   const today = startOfDayUTC();
   const since = addDays(today, -60);
+  const todayISO = today.toISOString().slice(0, 10);
 
-  // Run queries in parallel + select only the fields we render
-  const [habits, recentCompletedDb] = await Promise.all([
+  // Run everything in parallel to minimize latency
+  const [
+    habits,
+    recentCompletedDb,
+    openTasksCount,
+    goalsSlim,
+    totalGoalsCount,
+  ] = await prisma.$transaction([
     prisma.habit.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -56,17 +63,24 @@ export default async function Home() {
       take: 5,
       select: { id: true, title: true, completedAt: true },
     }),
+    prisma.task.count({ where: { status: { not: "DONE" } } }),
+    // Minimal fields to compute "on track" (active) client-side
+    prisma.goal.findMany({
+      select: { currentValue: true, targetValue: true },
+    }),
+    prisma.goal.count(),
   ]);
 
-  const todayISO = today.toISOString().slice(0, 10);
-
+  // Habit streaks + “completed today”
   const streaks = habits.map((h) => {
     const completedSet = new Set(
       h.records.map((r) => r.date.toISOString().slice(0, 10))
     );
-    const streak = currentStreakFromSet(completedSet, todayISO);
-    return { id: h.id, name: h.name, streak };
-    // We only need {name, streak} for the chart component
+    return {
+      id: h.id,
+      name: h.name,
+      streak: currentStreakFromSet(completedSet, todayISO),
+    };
   });
 
   const habitsCompletedToday = habits.reduce((sum, h) => {
@@ -76,6 +90,7 @@ export default async function Home() {
     return sum + (hasToday ? 1 : 0);
   }, 0);
 
+  // Recently completed display formatting
   const timeFmt = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -88,10 +103,11 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // (stubbed) Stats — unchanged for now
-  const openTasks = 12;
-  const goalsOnTrackCurrent = 2;
-  const goalsOnTrackTotal = 4;
+  // Real stats (replace placeholders)
+  const goalsOnTrackCurrent = goalsSlim.filter(
+    (g) => g.currentValue < g.targetValue
+  ).length;
+  const goalsOnTrackTotal = totalGoalsCount;
 
   const statItems: StatItem[] = [
     {
@@ -102,7 +118,7 @@ export default async function Home() {
     },
     {
       label: "Open tasks",
-      value: openTasks,
+      value: openTasksCount,
       positive: false,
       iconKey: "tasks",
     },
