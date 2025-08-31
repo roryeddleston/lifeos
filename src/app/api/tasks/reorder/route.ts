@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/user";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const ReorderSchema = z.object({
   items: z
@@ -14,7 +15,6 @@ const ReorderSchema = z.object({
     .min(1),
 });
 
-// Accepts: { items: [{ id: string, position: number }, ...] }
 export async function POST(req: Request) {
   const userId = await getUserId();
 
@@ -28,14 +28,18 @@ export async function POST(req: Request) {
 
   const { items } = parsed.data;
 
+  // Restrict updates to this user’s tasks
   await prisma.$transaction(
     items.map((i) =>
       prisma.task.update({
-        where: { id: i.id },
-        data: { position: i.position, userId },
+        where: { id: i.id, userId },
+        data: { position: i.position },
+        select: { id: true }, // tiny payload
       })
     )
   );
+
+  revalidatePath("/tasks");
 
   return NextResponse.json({ ok: true });
 }

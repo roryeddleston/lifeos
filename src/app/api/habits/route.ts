@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/user";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
-// GET /api/habits
-// Keep it small: id, name, createdAt. (Your /habits page does its own windowed fetch.)
+// GET /api/habits — small, and scoped
 export async function GET() {
+  const userId = await getUserId();
   try {
     const habits = await prisma.habit.findMany({
+      where: { userId },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, createdAt: true },
     });
@@ -19,18 +23,26 @@ export async function GET() {
   }
 }
 
-// POST /api/habits
-export async function POST(req: Request) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const name = typeof body?.name === "string" ? body.name.trim() : "";
-    if (!name)
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+const CreateHabit = z.object({ name: z.string().min(1) });
 
+// POST /api/habits — scoped
+export async function POST(req: Request) {
+  const userId = await getUserId();
+
+  const json = await req.json().catch(() => ({}));
+  const parsed = CreateHabit.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
+
+  try {
     const created = await prisma.habit.create({
-      data: { name },
+      data: { name: parsed.data.name.trim(), userId },
       select: { id: true, name: true, createdAt: true },
     });
+
+    revalidatePath("/");
+    revalidatePath("/habits");
 
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
