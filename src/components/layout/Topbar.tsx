@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   CalendarDays,
@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
 import ThemeToggle from "@/components/theme/ThemeToggle";
+import { usePathname } from "next/navigation";
 
 /* ---------- date (client-only to avoid hydration mismatch) ---------- */
 function formatShortGB(d = new Date()) {
@@ -112,9 +113,41 @@ function WeatherPill() {
 
 function QuickAdd() {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const pathname = usePathname();
+
+  // Close on route change
+  useEffect(() => {
+    if (open) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // Close on outside click/tap
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapRef}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer hover:opacity-95"
@@ -145,9 +178,7 @@ function QuickAdd() {
               key={item}
               href={`/${item.toLowerCase()}s?quick=new`}
               className="block rounded-lg px-3 py-2 text-sm transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              style={{
-                color: "var(--twc-text)",
-              }}
+              style={{ color: "var(--twc-text)" }}
               role="menuitem"
               onClick={() => setOpen(false)}
               onMouseEnter={(e) => {
