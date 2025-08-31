@@ -60,8 +60,9 @@ export default function QuickAddGoal() {
     }
   }
 
+  // Match tasks page focus ring
   const inputBase =
-    "mt-1 w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2";
+    "mt-1 w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]";
   const inputStyles = {
     border: "1px solid var(--twc-border)",
     color: "var(--twc-text)",

@@ -136,7 +136,7 @@ export default function TasksTable({
   }
 
   /* ----------------- Grouping for "all" view ----------------- */
-
+  // Remove "Tomorrow" section; send those items to "This Week".
   const grouped = useMemo(() => {
     if (view !== "all") return null;
 
@@ -148,13 +148,11 @@ export default function TasksTable({
       return d;
     };
     const midnight = new Date(today);
-    const tomorrow = addDays(1);
     const in7 = addDays(7);
 
     const buckets: { key: string; label: string; rows: TaskItem[] }[] = [
       { key: "overdue", label: "Overdue", rows: [] },
       { key: "today", label: "Today", rows: [] },
-      { key: "tomorrow", label: "Tomorrow", rows: [] },
       { key: "week", label: "This Week", rows: [] },
       { key: "later", label: "Later", rows: [] },
       { key: "nodate", label: "No date", rows: [] },
@@ -162,17 +160,21 @@ export default function TasksTable({
 
     for (const t of items) {
       if (!t.dueDate) {
-        buckets[5].rows.push(t);
+        buckets[4].rows.push(t); // nodate
         continue;
       }
       const due = new Date(t.dueDate);
       due.setHours(0, 0, 0, 0);
 
-      if (due < midnight) buckets[0].rows.push(t);
-      else if (due.getTime() === midnight.getTime()) buckets[1].rows.push(t);
-      else if (due.getTime() === tomorrow.getTime()) buckets[2].rows.push(t);
-      else if (due > tomorrow && due < in7) buckets[3].rows.push(t);
-      else buckets[4].rows.push(t);
+      if (due < midnight) {
+        buckets[0].rows.push(t); // overdue
+      } else if (due.getTime() === midnight.getTime()) {
+        buckets[1].rows.push(t); // today
+      } else if (due > midnight && due < in7) {
+        buckets[2].rows.push(t); // this week (includes tomorrow now)
+      } else {
+        buckets[3].rows.push(t); // later
+      }
     }
     return buckets.filter((b) => b.rows.length > 0);
   }, [items, view]);

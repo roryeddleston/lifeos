@@ -52,13 +52,14 @@ export default function QuickAddHabit() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New habit…"
-          className="flex-1 rounded-md px-3 py-2 text-sm"
+          className="flex-1 rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
           style={{
             border: "1px solid var(--twc-border)",
             backgroundColor: "var(--twc-surface)",
             color: "var(--twc-text)",
           }}
           disabled={isPending}
+          aria-label="New habit name"
         />
 
         <AddActionButton

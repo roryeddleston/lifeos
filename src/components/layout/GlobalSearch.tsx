@@ -155,7 +155,7 @@ export default function GlobalSearch() {
       {/* Desktop inline search */}
       <div className="relative hidden md:block" ref={dropdownRef}>
         <div
-          className="flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm hover:shadow transition w-[420px] max-w-[52vw]"
+          className="flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm hover:shadow transition w-[420px] max-w-[52vw] focus-within:ring-2 focus-within:ring-[var(--twc-accent)]"
           style={{
             borderColor: "var(--twc-border)",
             backgroundColor: "var(--twc-surface)",
@@ -167,11 +167,10 @@ export default function GlobalSearch() {
             type="text"
             placeholder="Search (⌘/)"
             aria-label="Global search"
-            className="w-full outline-none text-sm hide-native-clear"
+            className="w-full outline-none text-sm hide-native-clear placeholder:text-[var(--twc-muted)] placeholder:opacity-100"
             style={{
               color: "var(--twc-text)",
               background: "transparent",
-              "::placeholder": { color: "var(--twc-muted)" },
             }}
             value={q}
             onChange={(e) => setQ(e.currentTarget.value)}
@@ -353,7 +352,7 @@ export default function GlobalSearch() {
         >
           <div className="absolute inset-x-0 top-0 mx-auto w-full max-w-xl p-4">
             <div
-              className="flex items-center gap-2 rounded-full border px-3 py-2 shadow"
+              className="flex items-center gap-2 rounded-full border px-3 py-2 shadow focus-within:ring-2 focus-within:ring-[var(--twc-accent)]"
               style={{
                 borderColor: "var(--twc-border)",
                 backgroundColor: "var(--twc-surface)",
@@ -368,7 +367,7 @@ export default function GlobalSearch() {
                 type="text"
                 placeholder="Search"
                 aria-label="Global search"
-                className="w-full outline-none text-sm hide-native-clear"
+                className="w-full outline-none text-sm hide-native-clear placeholder:text-[var(--twc-muted)] placeholder:opacity-100"
                 style={{
                   color: "var(--twc-text)",
                   background: "transparent",
