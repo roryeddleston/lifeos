@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, Calculator } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
@@ -40,6 +40,11 @@ export default function GoalCard({ goal }: { goal: Goal }) {
   // custom adjust panel
   const [customOpen, setCustomOpen] = useState(false);
   const [customAmount, setCustomAmount] = useState<string>("");
+
+  // focus the custom input when opening the panel
+  const customInputRef = useRef<HTMLInputElement>(null);
+  const customButtonRef = useRef<HTMLButtonElement>(null);
+  const panelId = `custom-adjust-${local.id}`;
 
   const pct = Math.max(
     0,
@@ -116,10 +121,12 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     setCustomAmount("");
     setCustomOpen(false);
     patch({ currentValue: next });
+    // Return focus to the Custom button after applying (nice for keyboard)
+    requestAnimationFrame(() => customButtonRef.current?.focus());
   }
 
   const btnBase =
-    "inline-flex items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2";
+    "inline-flex items-center justify-center rounded-md cursor-pointer transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]";
   const boxStyle: React.CSSProperties = {
     color: "var(--twc-text)",
     border: "1px solid var(--twc-border)",
@@ -187,6 +194,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         {/* Custom adjust panel */}
         {customOpen && (
           <div
+            id={panelId}
             className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg p-2"
             style={{
               border: "1px solid var(--twc-border)",
@@ -198,6 +206,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               Amount
             </label>
             <input
+              ref={customInputRef}
               type="number"
               inputMode="decimal"
               step="any"
@@ -205,13 +214,14 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               placeholder="e.g. 10"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              className="h-8 w-28 rounded-md px-2 text-sm focus-visible:ring-2"
+              className="h-8 w-28 rounded-md px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
               style={boxStyle}
               onKeyDown={(e) => {
                 if (e.key === "Enter") applyCustom("add");
                 if (e.key === "Escape") {
                   setCustomAmount("");
                   setCustomOpen(false);
+                  requestAnimationFrame(() => customButtonRef.current?.focus());
                 }
               }}
               onMouseEnter={(e) => {
@@ -229,6 +239,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               onClick={() => {
                 setCustomAmount("");
                 setCustomOpen(false);
+                requestAnimationFrame(() => customButtonRef.current?.focus());
               }}
               aria-label="Close custom adjust"
               title="Close"
@@ -287,12 +298,18 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         </button>
 
         <button
+          ref={customButtonRef}
           type="button"
-          onClick={() => setCustomOpen((v) => !v)}
+          onClick={() => {
+            // open and focus input with the same green ring as Quick Add
+            setCustomOpen(true);
+            // let panel mount first
+            requestAnimationFrame(() => customInputRef.current?.focus());
+          }}
           className={`${btnBase} w-auto px-2 gap-1 h-8`}
           style={boxStyle}
           aria-expanded={customOpen}
-          aria-controls={`custom-adjust-${local.id}`}
+          aria-controls={panelId}
           title="Add/subtract custom amount"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor =
