@@ -6,6 +6,24 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
 
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 export default function QuickAddGoal() {
   const router = useRouter();
   const toast = useToast();
@@ -35,7 +53,7 @@ export default function QuickAddGoal() {
     };
 
     try {
-      const res = await fetch("/api/goals", {
+      const res = await apiFetch("/api/goals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -46,7 +64,6 @@ export default function QuickAddGoal() {
         toast({ variant: "error", title: "Add goal failed" });
         return;
       }
-      // reset form
       setTitle("");
       setTargetValue("");
       setUnit("");
@@ -55,12 +72,13 @@ export default function QuickAddGoal() {
       startTransition(() => router.refresh());
       toast({ variant: "success", title: "Goal added" });
     } catch (e) {
-      console.error(e);
-      toast({ variant: "error", title: "Network error" });
+      if ((e as Error).message !== "Unauthorized") {
+        console.error(e);
+        toast({ variant: "error", title: "Network error" });
+      }
     }
   }
 
-  // Match tasks page focus ring
   const inputBase =
     "mt-1 w-full rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]";
   const inputStyles = {

@@ -5,6 +5,23 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
 
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 export default function QuickAddHabit() {
   const [name, setName] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -17,7 +34,7 @@ export default function QuickAddHabit() {
     if (!trimmed) return;
 
     try {
-      const res = await fetch("/api/habits", {
+      const res = await apiFetch("/api/habits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
@@ -36,12 +53,14 @@ export default function QuickAddHabit() {
       startTransition(() => router.refresh());
       toast({ variant: "success", title: "Habit added" });
     } catch (e) {
-      console.error(e);
-      toast({
-        variant: "error",
-        title: "Network error",
-        description: "Please try again.",
-      });
+      if ((e as Error).message !== "Unauthorized") {
+        console.error(e);
+        toast({
+          variant: "error",
+          title: "Network error",
+          description: "Please try again.",
+        });
+      }
     }
   }
 

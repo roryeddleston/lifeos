@@ -15,6 +15,24 @@ type HabitView = {
   streak: number;
 };
 
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 export default function HabitCard({ habit }: { habit: HabitView }) {
   const router = useRouter();
   const toast = useToast();
@@ -30,7 +48,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
       curr.map((d) => (d.iso === iso ? { ...d, completed: next } : d))
     );
     try {
-      const res = await fetch(`/api/habits/${habit.id}/records/${iso}`, {
+      const res = await apiFetch(`/api/habits/${habit.id}/records/${iso}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: next }),
@@ -54,22 +72,26 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
       }
       startTransition(() => router.refresh());
     } catch (e) {
-      console.error(e);
-      setTiles((curr) =>
-        curr.map((d) => (d.iso === iso ? { ...d, completed: !next } : d))
-      );
-      toast({
-        variant: "error",
-        title: "Network error",
-        description: "Please try again.",
-      });
+      if ((e as Error).message !== "Unauthorized") {
+        console.error(e);
+        setTiles((curr) =>
+          curr.map((d) => (d.iso === iso ? { ...d, completed: !next } : d))
+        );
+        toast({
+          variant: "error",
+          title: "Network error",
+          description: "Please try again.",
+        });
+      }
     }
   }
 
   async function handleDelete() {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/habits/${habit.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/habits/${habit.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("DELETE /api/habits/:id failed:", res.status, text);
@@ -83,12 +105,14 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
       router.refresh();
       toast({ variant: "success", title: "Habit deleted" });
     } catch (e) {
-      console.error(e);
-      toast({
-        variant: "error",
-        title: "Network error",
-        description: "Please try again.",
-      });
+      if ((e as Error).message !== "Unauthorized") {
+        console.error(e);
+        toast({
+          variant: "error",
+          title: "Network error",
+          description: "Please try again.",
+        });
+      }
     } finally {
       setDeleting(false);
     }

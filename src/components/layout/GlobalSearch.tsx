@@ -4,6 +4,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, Target, ListTodo, Activity } from "lucide-react";
 import Link from "next/link";
 
+/* ---------- Auth-aware fetch helpers ---------- */
+
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
+/* ---------- Types ---------- */
+
 type SearchResult = {
   tasks: { id: string; title: string }[];
   habits: { id: string; name: string }[];
@@ -11,6 +33,8 @@ type SearchResult = {
 };
 
 const EMPTY_RESULTS: SearchResult = { tasks: [], habits: [], goals: [] };
+
+/* ---------- Utils ---------- */
 
 function useDebouncedValue<T>(value: T, delay = 250) {
   const [debounced, setDebounced] = useState(value);
@@ -20,6 +44,18 @@ function useDebouncedValue<T>(value: T, delay = 250) {
   }, [value, delay]);
   return debounced;
 }
+
+/** Narrow unknown errors to "abort" without using `any`. */
+function isAbortError(err: unknown): boolean {
+  // Native fetch rejects with a DOMException("AbortError") in many environments,
+  // but some polyfills throw Error with name "AbortError".
+  return (
+    (err instanceof DOMException && err.name === "AbortError") ||
+    (err instanceof Error && err.name === "AbortError")
+  );
+}
+
+/* ---------- Component ---------- */
 
 export default function GlobalSearch() {
   const [q, setQ] = useState("");
@@ -34,8 +70,9 @@ export default function GlobalSearch() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // ⌘/ (Ctrl+/) opens search
+  // ⌘/ (Ctrl+/) opens search; Esc closes
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = navigator.platform.includes("Mac") ? e.metaKey : e.ctrlKey;
@@ -53,6 +90,9 @@ export default function GlobalSearch() {
             el?.focus();
           }, 0);
         }
+      } else if (e.key === "Escape") {
+        setOpenDropdown(false);
+        setOpenMobile(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -70,9 +110,14 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // fetch on debounced query
+  // fetch on debounced query (with abort + 401 redirect)
   useEffect(() => {
     let cancelled = false;
+
+    // cancel any in-flight request
+    abortRef.current?.abort();
+    abortRef.current = null;
+
     (async () => {
       if (!debouncedQ || debouncedQ.trim().length < 2) {
         setResults(EMPTY_RESULTS);
@@ -80,14 +125,17 @@ export default function GlobalSearch() {
         setLoading(false);
         return;
       }
+
       setLoading(true);
       setError(null);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/search?q=${encodeURIComponent(debouncedQ)}`,
-          {
-            cache: "no-store",
-          }
+          { cache: "no-store", signal: controller.signal }
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as SearchResult;
@@ -98,14 +146,23 @@ export default function GlobalSearch() {
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : "Search failed";
-          setError(message);
-          setLoading(false);
+          if (isAbortError(err)) return;
+          // "Unauthorized" is already handled in apiFetch (redirected)
+          if (!(err instanceof Error) || err.message !== "Unauthorized") {
+            const message =
+              err instanceof Error ? err.message : "Search failed";
+            setError(message);
+            setLoading(false);
+          }
         }
+      } finally {
+        abortRef.current = null;
       }
     })();
+
     return () => {
       cancelled = true;
+      abortRef.current?.abort();
     };
   }, [debouncedQ]);
 
@@ -198,6 +255,8 @@ export default function GlobalSearch() {
               borderColor: "var(--twc-border)",
               backgroundColor: "var(--twc-surface)",
             }}
+            role="dialog"
+            aria-label="Search results"
           >
             <div className="max-h-80 overflow-auto p-2">
               {loading ? (
@@ -240,9 +299,7 @@ export default function GlobalSearch() {
                             <Link
                               href="/tasks"
                               className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-                              style={{
-                                color: "var(--twc-text)",
-                              }}
+                              style={{ color: "var(--twc-text)" }}
                               onClick={() => setOpenDropdown(false)}
                             >
                               <ListTodo
@@ -272,9 +329,7 @@ export default function GlobalSearch() {
                             <Link
                               href="/habits"
                               className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-                              style={{
-                                color: "var(--twc-text)",
-                              }}
+                              style={{ color: "var(--twc-text)" }}
                               onClick={() => setOpenDropdown(false)}
                             >
                               <Activity
@@ -304,9 +359,7 @@ export default function GlobalSearch() {
                             <Link
                               href="/goals"
                               className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-                              style={{
-                                color: "var(--twc-text)",
-                              }}
+                              style={{ color: "var(--twc-text)" }}
                               onClick={() => setOpenDropdown(false)}
                             >
                               <Target
@@ -349,6 +402,9 @@ export default function GlobalSearch() {
             backgroundColor:
               "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Global search"
         >
           <div className="absolute inset-x-0 top-0 mx-auto w-full max-w-xl p-4">
             <div
@@ -443,9 +499,7 @@ export default function GlobalSearch() {
                               : "/goals"
                           }
                           className="flex items-center gap-2 px-3 py-3 transition-colors"
-                          style={{
-                            color: "var(--twc-text)",
-                          }}
+                          style={{ color: "var(--twc-text)" }}
                           onClick={() => {
                             setOpenMobile(false);
                             reset();

@@ -30,6 +30,23 @@ type TaskItem = {
   position?: number;
 };
 
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 export default function TasksTable({
   initial,
   view,
@@ -59,17 +76,19 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/tasks/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(String(res.status));
       toast({ variant: "success", title: "Task deleted" });
     } catch (err) {
-      console.error(err);
-      setItems(prev);
-      toast({
-        variant: "error",
-        title: "Couldn’t delete",
-        description: "Network or server error.",
-      });
+      if ((err as Error).message !== "Unauthorized") {
+        console.error(err);
+        setItems(prev);
+        toast({
+          variant: "error",
+          title: "Couldn’t delete",
+          description: "Network or server error.",
+        });
+      }
     }
   }
 
@@ -91,20 +110,22 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await apiFetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       });
       if (!res.ok) throw new Error(String(res.status));
     } catch (err) {
-      console.error(err);
-      setItems(prev);
-      toast({
-        variant: "error",
-        title: "Update failed",
-        description: "Couldn’t toggle completion.",
-      });
+      if ((err as Error).message !== "Unauthorized") {
+        console.error(err);
+        setItems(prev);
+        toast({
+          variant: "error",
+          title: "Update failed",
+          description: "Couldn’t toggle completion.",
+        });
+      }
     }
   }
 
@@ -116,7 +137,7 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await apiFetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: nextTitle }),
@@ -124,13 +145,15 @@ export default function TasksTable({
       if (!res.ok) throw new Error(String(res.status));
       return true;
     } catch (err) {
-      console.error(err);
-      setItems(prev);
-      toast({
-        variant: "error",
-        title: "Update failed",
-        description: "Couldn’t save title.",
-      });
+      if ((err as Error).message !== "Unauthorized") {
+        console.error(err);
+        setItems(prev);
+        toast({
+          variant: "error",
+          title: "Update failed",
+          description: "Couldn’t save title.",
+        });
+      }
       return false;
     }
   }
@@ -171,7 +194,7 @@ export default function TasksTable({
       } else if (due.getTime() === midnight.getTime()) {
         buckets[1].rows.push(t); // today
       } else if (due > midnight && due < in7) {
-        buckets[2].rows.push(t); // this week (includes tomorrow now)
+        buckets[2].rows.push(t); // this week
       } else {
         buckets[3].rows.push(t); // later
       }
@@ -249,21 +272,20 @@ export default function TasksTable({
       }));
 
       // fire and forget server reorder (we’re already optimistic)
-      const payload = optimistic.map(({ id }, i) => ({
-        id,
-        position: i + 1,
-      }));
-      fetch("/api/tasks/reorder", {
+      const payload = optimistic.map(({ id }, i) => ({ id, position: i + 1 }));
+      apiFetch("/api/tasks/reorder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: payload }),
       }).catch((err) => {
-        console.error(err);
-        toast({
-          variant: "error",
-          title: "Reorder failed",
-          description: "We’ll try again shortly.",
-        });
+        if ((err as Error).message !== "Unauthorized") {
+          console.error(err);
+          toast({
+            variant: "error",
+            title: "Reorder failed",
+            description: "We’ll try again shortly.",
+          });
+        }
       });
 
       return optimistic;
@@ -345,10 +367,7 @@ export default function TasksTable({
       transform,
       transition,
       isDragging,
-    } = useSortable({
-      id: t.id,
-      animateLayoutChanges: () => false,
-    });
+    } = useSortable({ id: t.id, animateLayoutChanges: () => false });
 
     const setRowRef = (node: HTMLTableRowElement | null) =>
       setNodeRef(node as unknown as HTMLElement | null);

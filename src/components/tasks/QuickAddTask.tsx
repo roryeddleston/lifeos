@@ -19,6 +19,23 @@ type Task = {
   status: string;
 };
 
+function loginRedirect() {
+  if (typeof window !== "undefined") {
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
+      returnTo
+    )}`;
+  }
+}
+async function apiFetch(input: RequestInfo, init?: RequestInit) {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    loginRedirect();
+    throw new Error("Unauthorized");
+  }
+  return res;
+}
+
 function todayLocalISODate(): string {
   // returns YYYY-MM-DD in local time
   const d = new Date();
@@ -117,7 +134,7 @@ export default function QuickAdd() {
     setSubmitting(true);
     try {
       // 1) Primary attempt: send { tasks } with normalized ISO datetimes
-      let res = await fetch("/api/tasks/bulk", {
+      let res = await apiFetch("/api/tasks/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tasks: tasksPayload }),
@@ -128,7 +145,7 @@ export default function QuickAdd() {
         const text = await res.text().catch(() => "");
         // Try fallback only if the server complained about validity
         if (/No valid tasks/i.test(text)) {
-          res = await fetch("/api/tasks/bulk", {
+          res = await apiFetch("/api/tasks/bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: lines }),
@@ -163,12 +180,14 @@ export default function QuickAdd() {
         title: tasksPayload.length > 1 ? "Tasks added" : "Task added",
       });
     } catch (e) {
-      console.error(e);
-      toast({
-        variant: "error",
-        title: "Network error",
-        description: "Please try again.",
-      });
+      if ((e as Error).message !== "Unauthorized") {
+        console.error(e);
+        toast({
+          variant: "error",
+          title: "Network error",
+          description: "Please try again.",
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -234,7 +253,7 @@ export default function QuickAdd() {
           label="Add To-do"
           onClick={(e) => {
             if (e?.currentTarget?.type !== "button") {
-              // no-op; most implementations set type=button already
+              // no-op
             }
             const text = value.trim();
             if (text) createMany(text);
