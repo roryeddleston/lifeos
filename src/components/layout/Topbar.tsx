@@ -1,4 +1,3 @@
-// src/components/layout/Topbar.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -283,7 +282,7 @@ function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full px-2 py-1 focus:outline-none focus-visible:ring-2"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 focus:outline-none focus-visible:ring-2 cursor-pointer"
         aria-haspopup="menu"
         aria-expanded={open}
         title={displayName}
@@ -298,12 +297,12 @@ function UserMenu() {
           <img
             src={user.picture}
             alt={displayName}
-            className="h-7 w-7 rounded-full object-cover"
+            className="h-7 w-7 rounded-full object-cover cursor-pointer"
             referrerPolicy="no-referrer"
           />
         ) : (
           <span
-            className="h-7 w-7 inline-flex items-center justify-center rounded-full text-sm font-medium"
+            className="h-7 w-7 inline-flex items-center justify-center rounded-full text-sm font-medium cursor-pointer"
             aria-hidden
             style={{
               background:
@@ -313,7 +312,7 @@ function UserMenu() {
             {initial}
           </span>
         )}
-        <span className="hidden sm:inline text-sm">{displayName}</span>
+        {/* No displayName text shown in the topbar */}
       </button>
 
       {open && (
@@ -326,16 +325,9 @@ function UserMenu() {
             color: "var(--twc-text)",
           }}
         >
+          {/* Header (name only, no email) */}
           <div className="px-3 py-2 text-sm">
             <div className="font-medium truncate">{displayName}</div>
-            {user.email && (
-              <div
-                className="text-xs truncate"
-                style={{ color: "var(--twc-muted)" }}
-              >
-                {user.email}
-              </div>
-            )}
           </div>
           <hr
             style={{
