@@ -3,16 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getUserId } from "@/lib/user";
 
+/* -------------------- utils -------------------- */
+
 function normalizeToDate(input: unknown): Date | null {
   if (input === null || input === undefined || input === "") return null;
   if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
+
   if (typeof input === "string") {
     const s = input.trim();
     if (!s) return null;
+
+    // Accept YYYY-MM-DD as UTC midnight
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const d = new Date(`${s}T00:00:00.000Z`);
       if (!Number.isNaN(d.getTime())) return d;
     }
+
     const t = Date.parse(s);
     if (!Number.isNaN(t)) return new Date(t);
   }
@@ -28,8 +34,13 @@ const PatchSchema = z.object({
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+/* --------------------- GET --------------------- */
+
 export async function GET(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
 
   const task = await prisma.task.findFirst({
@@ -37,11 +48,11 @@ export async function GET(_req: Request, { params }: RouteParams) {
     select: {
       id: true,
       title: true,
+      description: true,
       status: true,
       dueDate: true,
       position: true,
       completedAt: true,
-      description: true,
       createdAt: true,
     },
   });
@@ -50,10 +61,15 @@ export async function GET(_req: Request, { params }: RouteParams) {
   return NextResponse.json(task);
 }
 
+/* -------------------- PATCH -------------------- */
+
 export async function PATCH(req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
-  const json = await req.json();
+  const json = await req.json().catch(() => ({}));
 
   const parsed = PatchSchema.safeParse(json);
   if (!parsed.success) {
@@ -63,14 +79,13 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     );
   }
 
-  // Ensure ownership
+  // Ensure task belongs to user
   const existing = await prisma.task.findFirst({ where: { id, userId } });
-  if (!existing) {
+  if (!existing)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
-  const data: Record<string, unknown> = {};
   const p = parsed.data;
+  const data: Record<string, unknown> = {};
 
   if (p.title !== undefined) data.title = p.title;
   if (p.position !== undefined) data.position = p.position;
@@ -107,15 +122,19 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   return NextResponse.json(updated);
 }
 
+/* ------------------- DELETE ------------------- */
+
 export async function DELETE(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
 
-  // Ensure ownership
+  // Ensure task belongs to user
   const existing = await prisma.task.findFirst({ where: { id, userId } });
-  if (!existing) {
+  if (!existing)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
   await prisma.task.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });

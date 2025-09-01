@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/user";
 
 // ISO year-week helper (UTC-based)
 function isoYearWeek(date: Date) {
   const d = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
   );
+  // ISO week: move to Thursday of this week
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(
@@ -16,13 +18,20 @@ function isoYearWeek(date: Date) {
   return `${year}-W${week}`;
 }
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function GET(_req: Request, { params }: RouteParams) {
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
   try {
-    const habit = await prisma.habit.findUnique({
-      where: { id: params.id },
+    // Ensure the habit belongs to the current user
+    const habit = await prisma.habit.findFirst({
+      where: { id, userId },
       select: {
         id: true,
         name: true,
@@ -61,7 +70,7 @@ export async function GET(
       countWeeks: series.length,
     });
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/habits/[id]/history failed:", err);
     return NextResponse.json(
       { error: "Failed to load history" },
       { status: 500 }

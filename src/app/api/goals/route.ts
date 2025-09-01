@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
 import { z } from "zod";
+import { requireUserIdOrJson } from "@/lib/authz";
 
 const CreateGoalSchema = z.object({
   title: z.string().min(1),
@@ -27,16 +27,20 @@ function normalizeToDate(input: unknown): Date | null {
 }
 
 export async function GET() {
-  const userId = await getUserId();
+  const uid = await requireUserIdOrJson();
+  if (uid instanceof NextResponse) return uid; // 401
+
   const goals = await prisma.goal.findMany({
-    where: { userId },
+    where: { userId: uid },
     orderBy: { createdAt: "asc" },
   });
   return NextResponse.json(goals);
 }
 
 export async function POST(req: Request) {
-  const userId = await getUserId();
+  const uid = await requireUserIdOrJson();
+  if (uid instanceof NextResponse) return uid; // 401
+
   const json = await req.json().catch(() => ({}));
   const parsed = CreateGoalSchema.safeParse(json);
   if (!parsed.success) {
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
       currentValue: 0,
       unit: parsed.data.unit.trim(),
       deadline,
-      userId,
+      userId: uid,
     },
   });
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUserIdOrJson } from "@/lib/authz";
 
 // Shape of the fields we allow updating on a Goal
 type GoalUpdatePayload = Partial<{
@@ -19,83 +20,93 @@ type GoalUpdateBody = Partial<{
   currentValue: number | string;
 }>;
 
-// PATCH /api/goals/:id — partial update
-export async function PATCH(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> } // params can be async in Next 14/15
-) {
-  try {
-    const { id } = await ctx.params;
-    const body = (await req.json()) as GoalUpdateBody;
+type RouteParams = { params: Promise<{ id: string }> };
 
-    const data: GoalUpdatePayload = {};
+/** GET /api/goals/:id — fetch one goal (scoped to user) */
+export async function GET(_req: Request, { params }: RouteParams) {
+  const uid = await requireUserIdOrJson();
+  if (uid instanceof NextResponse) return uid;
 
-    if (typeof body.title === "string") data.title = body.title.trim();
-    if (typeof body.unit === "string") data.unit = body.unit.trim();
+  const { id } = await params;
 
-    if (body.deadline === null) {
-      data.deadline = null;
-    } else if (typeof body.deadline === "string" && body.deadline) {
-      data.deadline = new Date(body.deadline);
-    }
+  const goal = await prisma.goal.findFirst({
+    where: { id, userId: uid },
+  });
 
-    if (typeof body.targetValue !== "undefined") {
-      const tv = Number(body.targetValue);
-      if (!Number.isFinite(tv) || tv <= 0) {
-        return NextResponse.json(
-          { error: "targetValue must be > 0" },
-          { status: 400 }
-        );
-      }
-      data.targetValue = tv;
-    }
-
-    if (typeof body.currentValue !== "undefined") {
-      let cv = Number(body.currentValue);
-      if (!Number.isFinite(cv)) {
-        return NextResponse.json(
-          { error: "currentValue must be a number" },
-          { status: 400 }
-        );
-      }
-      // Clamp to [0, targetValue] if target provided; else >= 0
-      if (typeof data.targetValue === "number") {
-        cv = Math.max(0, Math.min(cv, data.targetValue));
-      } else {
-        cv = Math.max(0, cv);
-      }
-      data.currentValue = cv;
-    }
-
-    const updated = await prisma.goal.update({
-      where: { id },
-      data,
-    });
-
-    return NextResponse.json(updated);
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      { error: "Failed to update goal" },
-      { status: 500 }
-    );
-  }
+  if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(goal);
 }
 
-// DELETE /api/goals/:id — delete
-export async function DELETE(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await ctx.params;
-    await prisma.goal.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      { error: "Failed to delete goal" },
-      { status: 500 }
-    );
+/** PATCH /api/goals/:id — partial update */
+export async function PATCH(req: Request, { params }: RouteParams) {
+  const uid = await requireUserIdOrJson();
+  if (uid instanceof NextResponse) return uid;
+
+  const { id } = await params;
+  const body = (await req.json().catch(() => ({}))) as GoalUpdateBody;
+
+  const data: GoalUpdatePayload = {};
+
+  if (typeof body.title === "string") data.title = body.title.trim();
+  if (typeof body.unit === "string") data.unit = body.unit.trim();
+
+  if (body.deadline === null) {
+    data.deadline = null;
+  } else if (typeof body.deadline === "string" && body.deadline) {
+    const d = new Date(body.deadline);
+    if (Number.isNaN(d.getTime())) {
+      return NextResponse.json({ error: "Invalid deadline" }, { status: 400 });
+    }
+    data.deadline = d;
   }
+
+  if (typeof body.targetValue !== "undefined") {
+    const tv = Number(body.targetValue);
+    if (!Number.isFinite(tv) || tv <= 0) {
+      return NextResponse.json(
+        { error: "targetValue must be > 0" },
+        { status: 400 }
+      );
+    }
+    data.targetValue = tv;
+  }
+
+  if (typeof body.currentValue !== "undefined") {
+    let cv = Number(body.currentValue);
+    if (!Number.isFinite(cv)) {
+      return NextResponse.json(
+        { error: "currentValue must be a number" },
+        { status: 400 }
+      );
+    }
+    // If targetValue included in this PATCH, clamp to it; otherwise at least 0
+    if (typeof data.targetValue === "number") {
+      cv = Math.max(0, Math.min(cv, data.targetValue));
+    } else {
+      cv = Math.max(0, cv);
+    }
+    data.currentValue = cv;
+  }
+
+  // Scope update to user
+  const updated = await prisma.goal.update({
+    where: { id, userId: uid },
+    data,
+  });
+
+  return NextResponse.json(updated);
+}
+
+/** DELETE /api/goals/:id — delete (scoped to user) */
+export async function DELETE(_req: Request, { params }: RouteParams) {
+  const uid = await requireUserIdOrJson();
+  if (uid instanceof NextResponse) return uid;
+
+  const { id } = await params;
+
+  await prisma.goal.delete({
+    where: { id, userId: uid },
+  });
+
+  return NextResponse.json({ ok: true });
 }

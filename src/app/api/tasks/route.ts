@@ -29,6 +29,9 @@ function normalizeToDate(input: unknown): Date | null {
 
 export async function GET() {
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const tasks = await prisma.task.findMany({
     where: { userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -48,6 +51,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const json = await req.json().catch(() => ({}));
   const parsed = CreateTaskSchema.safeParse(json);
@@ -98,5 +103,6 @@ export async function POST(req: Request) {
       completedAt: true,
     },
   });
+
   return NextResponse.json(created, { status: 201 });
 }

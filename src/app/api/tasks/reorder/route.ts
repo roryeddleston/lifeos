@@ -15,8 +15,12 @@ const ReorderSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Require auth
   const userId = await getUserId();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Validate payload
   const parsed = ReorderSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -25,21 +29,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const ids = parsed.data.items.map((i) => i.id);
-  // Ownership guard: ensure all belong to user
-  const owners = await prisma.task.findMany({
+  const items = parsed.data.items;
+  const ids = items.map((i) => i.id);
+
+  // Ownership guard: ensure all provided tasks belong to the current user
+  const owned = await prisma.task.findMany({
     where: { id: { in: ids }, userId },
     select: { id: true },
   });
-  if (owners.length !== ids.length) {
+  if (owned.length !== ids.length) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Apply new positions
   await prisma.$transaction(
-    parsed.data.items.map((i) =>
+    items.map(({ id, position }) =>
       prisma.task.update({
-        where: { id: i.id },
-        data: { position: i.position },
+        where: { id },
+        data: { position },
       })
     )
   );

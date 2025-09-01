@@ -34,6 +34,8 @@ function isPrismaNotFound(err: unknown): boolean {
 /** Fetch a single habit for the current user (minimal fields for UI) */
 export async function GET(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   try {
@@ -54,6 +56,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
 /** Update habit — currently supports rename via { name } */
 export async function PATCH(req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   let bodyUnknown: unknown;
@@ -105,6 +109,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
  */
 export async function DELETE(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   try {
