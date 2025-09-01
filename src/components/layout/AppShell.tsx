@@ -2,7 +2,6 @@
 
 import type { PropsWithChildren } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-// MobileSidebar removed from use to follow new mobile dropdown approach
 import Topbar from "@/components/layout/Topbar";
 import {
   PageHeaderProvider,
