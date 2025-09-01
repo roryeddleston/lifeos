@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth-server";
 import GoalsTabs from "@/components/goals/GoalsTabs";
 import QuickAddGoal from "@/components/goals/QuickAddGoal";
 import { formatDueLabel } from "@/lib/date";
@@ -6,7 +7,10 @@ import { formatDueLabel } from "@/lib/date";
 export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
+  const userId = await requireUserId("/goals");
+
   const goalsDb = await prisma.goal.findMany({
+    where: { userId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -17,7 +21,6 @@ export default async function GoalsPage() {
       unit: true,
       deadline: true,
       createdAt: true,
-      // userId not needed on this page render
     },
   });
 

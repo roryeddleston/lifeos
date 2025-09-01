@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth-server";
 import Card from "@/components/cards/Card";
 import StatCardsRow, {
   type StatItem,
@@ -31,9 +32,12 @@ function currentStreakFromSet(completedISOSet: Set<string>, todayISO: string) {
   return streak;
 }
 
-export const revalidate = 60;
+// Dashboard is user-specific; avoid caching across users.
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const userId = await requireUserId("/");
+
   const today = startOfDayUTC();
   const since = addDays(today, -60);
   const todayISO = today.toISOString().slice(0, 10);
@@ -47,28 +51,33 @@ export default async function Home() {
     totalGoalsCount,
   ] = await prisma.$transaction([
     prisma.habit.findMany({
+      where: { userId },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
         name: true,
         records: {
-          where: { date: { gte: since, lte: today }, completed: true },
+          where: {
+            date: { gte: since, lte: today },
+            completed: true,
+          },
           select: { date: true },
         },
       },
     }),
     prisma.task.findMany({
-      where: { status: "DONE", completedAt: { not: null } },
+      where: { userId, status: "DONE", completedAt: { not: null } },
       orderBy: { completedAt: "desc" },
       take: 5,
       select: { id: true, title: true, completedAt: true },
     }),
-    prisma.task.count({ where: { status: { not: "DONE" } } }),
-    // Minimal fields to compute "on track" (active) client-side
+    prisma.task.count({ where: { userId, status: { not: "DONE" } } }),
+    // Minimal fields to compute "on track" client-side
     prisma.goal.findMany({
+      where: { userId },
       select: { currentValue: true, targetValue: true },
     }),
-    prisma.goal.count(),
+    prisma.goal.count({ where: { userId } }),
   ]);
 
   // Habit streaks + “completed today”
@@ -103,7 +112,7 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // Real stats (replace placeholders)
+  // Real stats
   const goalsOnTrackCurrent = goalsSlim.filter(
     (g) => g.currentValue < g.targetValue
   ).length;

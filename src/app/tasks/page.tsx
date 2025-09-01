@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth-server";
 import type { Prisma } from "@prisma/client";
 import Card from "@/components/cards/Card";
 import TasksTable from "../../components/tasks/TasksTable";
@@ -10,11 +11,13 @@ export const dynamic = "force-dynamic";
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
 type PageProps = {
-  // In App Router, searchParams is async now — treat it as a Promise and await.
+  // In App Router, searchParams may be a Promise (Next 14/15 pattern)
   searchParams: Promise<{ view?: string }>;
 };
 
 export default async function TasksPage({ searchParams }: PageProps) {
+  const userId = await requireUserId("/tasks");
+
   const { view: rawView } = await searchParams;
   const view = (rawView ?? "all").toLowerCase() as AllowedView;
 
@@ -27,9 +30,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
     return d;
   };
 
-  // Base filter
+  // Base filter: also scope by userId
   const where: Prisma.TaskWhereInput =
-    view === "done" ? { status: "DONE" } : { status: { not: "DONE" } };
+    view === "done"
+      ? { userId, status: "DONE" }
+      : { userId, status: { not: "DONE" } };
 
   // View-specific filters
   if (view === "today") {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth-server";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
@@ -35,11 +36,14 @@ function maxRun(arr: boolean[]) {
 }
 
 export default async function HabitsPage() {
+  const userId = await requireUserId("/habits");
+
   const today = startOfDayUTC();
   const start = addDays(today, -6);
   const end = addDays(today, 1);
 
   const habits = await prisma.habit.findMany({
+    where: { userId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
