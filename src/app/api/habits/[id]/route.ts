@@ -1,16 +1,16 @@
-// src/app/api/habits/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/user";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
-/** Match your project’s pattern: params is a Promise and must be awaited */
+/** Next App Router pattern: params is a Promise and must be awaited */
 type RouteParams = { params: Promise<{ id: string }> };
 
 /* ---------------------- Validation Schemas ---------------------- */
 
 const PatchSchema = z.object({
-  // rename only (expand later as needed)
+  // rename only (extend later if needed)
   name: z.string().trim().min(1, "Name is required").max(200).optional(),
 });
 
@@ -31,13 +31,14 @@ function isPrismaNotFound(err: unknown): boolean {
 }
 
 /* ----------------------------- GET ----------------------------- */
-/** Fetch a single habit (minimal fields for UI) */
+/** Fetch a single habit for the current user (minimal fields for UI) */
 export async function GET(_req: Request, { params }: RouteParams) {
+  const userId = await getUserId();
   const { id } = await params;
 
   try {
-    const habit = await prisma.habit.findUnique({
-      where: { id },
+    const habit = await prisma.habit.findFirst({
+      where: { id, userId },
       select: { id: true, name: true, createdAt: true },
     });
 
@@ -52,6 +53,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
 /* ---------------------------- PATCH ---------------------------- */
 /** Update habit — currently supports rename via { name } */
 export async function PATCH(req: Request, { params }: RouteParams) {
+  const userId = await getUserId();
   const { id } = await params;
 
   let bodyUnknown: unknown;
@@ -76,6 +78,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
 
   try {
+    // Ensure it belongs to the user
+    const exists = await prisma.habit.findFirst({ where: { id, userId } });
+    if (!exists) return jsonError("Habit not found", 404);
+
     const updated = await prisma.habit.update({
       where: { id },
       data,
@@ -93,14 +99,19 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
 /* --------------------------- DELETE ---------------------------- */
 /**
- * Delete a habit.
- * Prisma schema uses `onDelete: Cascade` on HabitRecord → Habit,
+ * Delete a habit for the current user.
+ * Your Prisma schema uses `onDelete: Cascade` on HabitRecord → Habit,
  * so associated HabitRecord rows are removed automatically.
  */
 export async function DELETE(_req: Request, { params }: RouteParams) {
+  const userId = await getUserId();
   const { id } = await params;
 
   try {
+    // Ensure it belongs to the user
+    const exists = await prisma.habit.findFirst({ where: { id, userId } });
+    if (!exists) return jsonError("Habit not found", 404);
+
     await prisma.habit.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   } catch (e: unknown) {

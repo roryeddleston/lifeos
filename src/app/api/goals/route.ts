@@ -1,57 +1,72 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserId } from "@/lib/user";
+import { z } from "zod";
 
-// GET /api/goals — list goals
-export async function GET() {
-  try {
-    const goals = await prisma.goal.findMany({
-      orderBy: { createdAt: "asc" },
-    });
-    return NextResponse.json(goals);
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json(
-      { error: "Failed to fetch goals" },
-      { status: 500 }
-    );
+const CreateGoalSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().trim().nullable().optional(),
+  targetValue: z.coerce.number().int().positive(),
+  unit: z.string().min(1),
+  deadline: z.string().trim().nullable().optional(), // ISO or YYYY-MM-DD
+});
+
+function normalizeToDate(input: unknown): Date | null {
+  if (input === null || input === undefined || input === "") return null;
+  if (typeof input === "string") {
+    const s = input.trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const d = new Date(`${s}T00:00:00.000Z`);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) return new Date(t);
   }
+  throw new Error("Invalid date");
 }
 
-// POST /api/goals — create goal
+export async function GET() {
+  const userId = await getUserId();
+  const goals = await prisma.goal.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+  return NextResponse.json(goals);
+}
+
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const { title, targetValue, unit, deadline } = body ?? {};
-
-    if (!title || !String(title).trim()) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
-    }
-    const target = Number(targetValue);
-    if (!Number.isFinite(target) || target <= 0) {
-      return NextResponse.json(
-        { error: "targetValue must be > 0" },
-        { status: 400 }
-      );
-    }
-    if (!unit || !String(unit).trim()) {
-      return NextResponse.json({ error: "Unit is required" }, { status: 400 });
-    }
-
-    const created = await prisma.goal.create({
-      data: {
-        title: String(title).trim(),
-        targetValue: target,
-        unit: String(unit).trim(),
-        deadline: deadline ? new Date(deadline) : null,
-        // currentValue defaults to 0 in schema
-      },
-    });
-    return NextResponse.json(created, { status: 201 });
-  } catch (e) {
-    console.error(e);
+  const userId = await getUserId();
+  const json = await req.json().catch(() => ({}));
+  const parsed = CreateGoalSchema.safeParse(json);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Failed to create goal" },
-      { status: 500 }
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
     );
   }
+
+  let deadline: Date | null = null;
+  try {
+    deadline = normalizeToDate(parsed.data.deadline ?? null);
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid deadline. Use YYYY-MM-DD or ISO datetime." },
+      { status: 400 }
+    );
+  }
+
+  const created = await prisma.goal.create({
+    data: {
+      title: parsed.data.title.trim(),
+      description: parsed.data.description ?? null,
+      targetValue: parsed.data.targetValue,
+      currentValue: 0,
+      unit: parsed.data.unit.trim(),
+      deadline,
+      userId,
+    },
+  });
+
+  return NextResponse.json(created, { status: 201 });
 }

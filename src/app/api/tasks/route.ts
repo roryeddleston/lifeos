@@ -2,19 +2,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/user";
 import { z } from "zod";
-import { TaskStatus } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 
-/** Accepts YYYY-MM-DD, full ISO string, Date, or null; returns Date|null or throws */
+const CreateTaskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().trim().nullable().optional(),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional().default("TODO"),
+  // accept ISO string or YYYY-MM-DD; we’ll normalize below
+  dueDate: z.string().trim().nullable().optional(),
+});
+
 function normalizeToDate(input: unknown): Date | null {
   if (input === null || input === undefined || input === "") return null;
-
   if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
-
   if (typeof input === "string") {
     const s = input.trim();
     if (!s) return null;
-
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const d = new Date(`${s}T00:00:00.000Z`);
       if (!Number.isNaN(d.getTime())) return d;
@@ -22,57 +24,43 @@ function normalizeToDate(input: unknown): Date | null {
     const t = Date.parse(s);
     if (!Number.isNaN(t)) return new Date(t);
   }
-
   throw new Error("Invalid date");
 }
 
-const CreateSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().trim().optional().nullable(),
-  status: z.nativeEnum(TaskStatus).optional().default("TODO"),
-  // accept a variety, normalize manually
-  dueDate: z.union([z.string(), z.date(), z.null()]).optional().nullable(),
-});
-
 export async function GET() {
   const userId = await getUserId();
-  try {
-    const tasks = await prisma.task.findMany({
-      where: { userId },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        status: true,
-        dueDate: true,
-        position: true,
-        createdAt: true,
-        completedAt: true,
-      },
-    });
-    return NextResponse.json(tasks);
-  } catch (err) {
-    console.error("GET /api/tasks failed", err);
-    return NextResponse.json(
-      { error: "Failed to fetch tasks" },
-      { status: 500 }
-    );
-  }
+  const tasks = await prisma.task.findMany({
+    where: { userId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      dueDate: true,
+      createdAt: true,
+      position: true,
+      completedAt: true,
+    },
+  });
+  return NextResponse.json(tasks);
 }
 
 export async function POST(req: Request) {
   const userId = await getUserId();
 
-  let parsed: z.infer<typeof CreateSchema>;
-  try {
-    const json = await req.json().catch(() => ({}));
-    parsed = CreateSchema.parse(json);
-  } catch (e) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  const json = await req.json().catch(() => ({}));
+  const parsed = CreateTaskSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
   }
 
-  // Append to bottom
+  const { title, description = null, status, dueDate } = parsed.data;
+
+  // Next position per user
   const max = await prisma.task.aggregate({
     where: { userId },
     _max: { position: true },
@@ -81,9 +69,7 @@ export async function POST(req: Request) {
 
   let due: Date | null = null;
   try {
-    if (parsed.dueDate !== undefined) {
-      due = normalizeToDate(parsed.dueDate ?? null);
-    }
+    due = normalizeToDate(dueDate ?? null);
   } catch {
     return NextResponse.json(
       { error: "Invalid dueDate. Use YYYY-MM-DD or ISO datetime." },
@@ -91,37 +77,26 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const created = await prisma.task.create({
-      data: {
-        title: parsed.title.trim(),
-        description: parsed.description ?? null,
-        status: parsed.status ?? "TODO",
-        dueDate: due,
-        position: nextPos,
-        userId,
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        status: true,
-        dueDate: true,
-        position: true,
-        createdAt: true,
-      },
-    });
-
-    // SSR cache bust
-    revalidatePath("/");
-    revalidatePath("/tasks");
-
-    return NextResponse.json(created, { status: 201 });
-  } catch (err) {
-    console.error("POST /api/tasks failed", err);
-    return NextResponse.json(
-      { error: "Failed to create task" },
-      { status: 500 }
-    );
-  }
+  const created = await prisma.task.create({
+    data: {
+      title: title.trim(),
+      description,
+      status,
+      dueDate: due,
+      position: nextPos,
+      userId,
+      completedAt: status === "DONE" ? new Date() : null,
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      dueDate: true,
+      createdAt: true,
+      position: true,
+      completedAt: true,
+    },
+  });
+  return NextResponse.json(created, { status: 201 });
 }

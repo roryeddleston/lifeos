@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { TaskStatus } from "@prisma/client";
 import { getUserId } from "@/lib/user";
-import { revalidatePath } from "next/cache";
 
-/** Accepts YYYY-MM-DD, full ISO string, Date, or null; returns Date|null or throws */
 function normalizeToDate(input: unknown): Date | null {
   if (input === null || input === undefined || input === "") return null;
   if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
@@ -22,35 +19,65 @@ function normalizeToDate(input: unknown): Date | null {
   throw new Error("Invalid date");
 }
 
-// Zod schema: do NOT use .datetime(); accept string | Date | null.
 const PatchSchema = z.object({
   title: z.string().min(1).optional(),
-  status: z.nativeEnum(TaskStatus).optional(),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
   dueDate: z.union([z.string(), z.date(), z.null()]).optional(),
   position: z.number().int().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-export async function PATCH(req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
   const { id } = await params;
 
-  let parsed: z.infer<typeof PatchSchema>;
-  try {
-    const json = await req.json();
-    parsed = PatchSchema.parse(json);
-  } catch {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  const task = await prisma.task.findFirst({
+    where: { id, userId },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      dueDate: true,
+      position: true,
+      completedAt: true,
+      description: true,
+      createdAt: true,
+    },
+  });
+
+  if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(task);
+}
+
+export async function PATCH(req: Request, { params }: RouteParams) {
+  const userId = await getUserId();
+  const { id } = await params;
+  const json = await req.json();
+
+  const parsed = PatchSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  // Ensure ownership
+  const existing = await prisma.task.findFirst({ where: { id, userId } });
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const data: Record<string, unknown> = {};
-  if (parsed.title !== undefined) data.title = parsed.title;
-  if (parsed.position !== undefined) data.position = parsed.position;
+  const p = parsed.data;
 
-  if (parsed.dueDate !== undefined) {
+  if (p.title !== undefined) data.title = p.title;
+  if (p.position !== undefined) data.position = p.position;
+
+  if (p.dueDate !== undefined) {
     try {
-      data.dueDate = normalizeToDate(parsed.dueDate);
+      data.dueDate = normalizeToDate(p.dueDate);
     } catch {
       return NextResponse.json(
         { error: "Invalid dueDate. Use YYYY-MM-DD or ISO datetime." },
@@ -59,73 +86,37 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     }
   }
 
-  if (parsed.status !== undefined) {
-    data.status = parsed.status;
-    data.completedAt = parsed.status === "DONE" ? new Date() : null;
+  if (p.status !== undefined) {
+    data.status = p.status;
+    data.completedAt = p.status === "DONE" ? new Date() : null;
   }
 
-  try {
-    const updated = await prisma.task.update({
-      where: { id, userId },
-      data,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        dueDate: true,
-        position: true,
-        completedAt: true,
-      },
-    });
+  const updated = await prisma.task.update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      dueDate: true,
+      position: true,
+      completedAt: true,
+    },
+  });
 
-    revalidatePath("/");
-    revalidatePath("/tasks");
-
-    return NextResponse.json(updated);
-  } catch (err) {
-    console.error("PATCH /api/tasks/[id] failed", err);
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
   const { id } = await params;
 
-  try {
-    await prisma.task.delete({ where: { id, userId } });
-
-    revalidatePath("/");
-    revalidatePath("/tasks");
-
-    return new NextResponse(null, { status: 204 });
-  } catch (err) {
-    console.error("DELETE /api/tasks/[id] failed", err);
+  // Ensure ownership
+  const existing = await prisma.task.findFirst({ where: { id, userId } });
+  if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-}
 
-export async function GET(_req: Request, { params }: RouteParams) {
-  const userId = await getUserId();
-  const { id } = await params;
-
-  try {
-    const task = await prisma.task.findUnique({
-      where: { id, userId },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        dueDate: true,
-        position: true,
-        completedAt: true,
-      },
-    });
-    if (!task)
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(task);
-  } catch (err) {
-    console.error("GET /api/tasks/[id] failed", err);
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  await prisma.task.delete({ where: { id } });
+  return new NextResponse(null, { status: 204 });
 }

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/user";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 
 const ReorderSchema = z.object({
   items: z
@@ -26,20 +25,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items } = parsed.data;
+  const ids = parsed.data.items.map((i) => i.id);
+  // Ownership guard: ensure all belong to user
+  const owners = await prisma.task.findMany({
+    where: { id: { in: ids }, userId },
+    select: { id: true },
+  });
+  if (owners.length !== ids.length) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-  // Restrict updates to this user’s tasks
   await prisma.$transaction(
-    items.map((i) =>
+    parsed.data.items.map((i) =>
       prisma.task.update({
-        where: { id: i.id, userId },
+        where: { id: i.id },
         data: { position: i.position },
-        select: { id: true }, // tiny payload
       })
     )
   );
-
-  revalidatePath("/tasks");
 
   return NextResponse.json({ ok: true });
 }
