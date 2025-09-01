@@ -1,3 +1,4 @@
+// src/components/layout/Topbar.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import {
   CloudSun,
   Cloudy,
   ChevronDown,
+  LogIn,
 } from "lucide-react";
 import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
@@ -41,16 +43,19 @@ function iconForCode(code: number): Weather["icon"] {
 }
 
 async function getWeather(): Promise<Weather> {
-  return new Promise((resolve) => {
+  return new Promise<Weather>((resolve) => {
     if (!navigator.geolocation) return resolve({ temp: null, icon: null });
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      async (pos: GeolocationPosition) => {
         try {
           const { latitude, longitude } = pos.coords;
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`;
           const r = await fetch(url, { cache: "no-store" });
           if (!r.ok) throw new Error("weather fetch failed");
-          const j = await r.json();
+          // Open-Meteo response is untyped; use a minimal shape
+          const j: {
+            current?: { weather_code?: number; temperature_2m?: number };
+          } = await r.json();
           const code = j?.current?.weather_code ?? null;
           const temp = j?.current?.temperature_2m ?? null;
           resolve({ temp, icon: code != null ? iconForCode(code) : null });
@@ -146,6 +151,15 @@ function QuickAdd() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Explicitly type React events to avoid `any`
+  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.currentTarget.style.backgroundColor =
+      "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
+  };
+  const handleMouseLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.currentTarget.style.backgroundColor = "transparent";
+  };
+
   return (
     <div className="relative" ref={wrapRef}>
       <button
@@ -181,13 +195,8 @@ function QuickAdd() {
               style={{ color: "var(--twc-text)" }}
               role="menuitem"
               onClick={() => setOpen(false)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
             >
               {item}
             </Link>
@@ -253,6 +262,20 @@ export default function Topbar(props: TopbarProps) {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* Simple auth affordance; replace with your user menu later */}
+              <Link
+                href="/api/auth/login"
+                className="hidden sm:inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{
+                  borderColor: "var(--twc-border)",
+                  backgroundColor: "var(--twc-surface)",
+                  color: "var(--twc-text)",
+                }}
+              >
+                <LogIn className="h-4 w-4" />
+                Log in
+              </Link>
+
               <ThemeToggle />
               <QuickAdd />
             </div>
