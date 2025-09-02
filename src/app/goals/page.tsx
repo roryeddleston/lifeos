@@ -1,4 +1,3 @@
-// app/goals/page.tsx (or similar)
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import GoalsTabs from "@/components/goals/GoalsTabs";
