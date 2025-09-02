@@ -17,7 +17,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import { usePathname } from "next/navigation";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 
-// ---------- Date formatter
+/* ---------- date (client-only to avoid hydration mismatch) ---------- */
 function formatShortGB(d = new Date()) {
   return d.toLocaleDateString("en-GB", {
     weekday: "short",
@@ -26,7 +26,7 @@ function formatShortGB(d = new Date()) {
   });
 }
 
-// ---------- Weather helpers
+/* ---------- weather helpers ---------- */
 type Weather = {
   temp: number | null;
   icon: "sun" | "cloud" | "cloudSun" | "cloudy" | "rain" | null;
@@ -65,8 +65,7 @@ async function getWeather(): Promise<Weather> {
   });
 }
 
-// ---------- Subcomponents
-
+/* ---------- subcomponents ---------- */
 function WeatherPill() {
   const [w, setW] = useState<Weather>({ temp: null, icon: null });
 
@@ -91,6 +90,7 @@ function WeatherPill() {
         return Cloudy;
       case "rain":
         return CloudRain;
+      case "cloud":
       default:
         return Cloud;
     }
@@ -125,7 +125,8 @@ function QuickAdd() {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
       const el = wrapRef.current;
-      if (el && e.target instanceof Node && !el.contains(e.target)) {
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
         setOpen(false);
       }
     };
@@ -162,7 +163,7 @@ function QuickAdd() {
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-44 rounded-xl border p-1 shadow-xl z-50"
+          className="absolute right-0 mt-2 w-44 rounded-xl border p-1 shadow-xl"
           style={{
             borderColor: "var(--twc-border)",
             backgroundColor: "var(--twc-surface)",
@@ -194,8 +195,7 @@ function QuickAdd() {
   );
 }
 
-// ---------- Topbar
-
+/* ---------- topbar ---------- */
 type TopbarProps = {
   title?: string;
   subtitle?: string;
