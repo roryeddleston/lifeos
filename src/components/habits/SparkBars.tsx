@@ -84,7 +84,7 @@ export default function SparkBars({
           >
             <rect
               x={0}
-              y={height - height} // start at top (0)
+              y={height - height}
               width={barWidth}
               height={height}
               rx={2}
