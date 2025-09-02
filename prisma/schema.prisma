@@ -3,20 +3,20 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /* -------------------- Habits -------------------- */
 
 model Habit {
-  id         String        @id @default(cuid())
-  name       String
-  createdAt  DateTime      @default(now())
-  records    HabitRecord[]
-  userId     String        // Clerk `userId`
+  id           String        @id @default(cuid())
+  name         String
+  createdAt    DateTime      @default(now())
+  completions  HabitRecord[] @relation("HabitCompletions")
+  userId       String
 
-  // Listing and scoping by user; sort newest-first
   @@index([userId, createdAt])
 }
 
@@ -25,7 +25,7 @@ model HabitRecord {
   date      DateTime
   completed Boolean  @default(false)
 
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  habit     Habit    @relation("HabitCompletions", fields: [habitId], references: [id], onDelete: Cascade)
   habitId   String
 
   @@unique([habitId, date], name: "habitId_date")
@@ -49,8 +49,7 @@ model Task {
   status      TaskStatus  @default(TODO)
   createdAt   DateTime    @default(now())
   position    Int         @default(0)
-
-  userId      String      // required for scoping
+  userId      String
   completedAt DateTime?
 
   @@index([status, completedAt])
@@ -72,7 +71,7 @@ model Goal {
   unit         String
   deadline     DateTime?
   createdAt    DateTime @default(now())
-  userId       String   // required for scoping
+  userId       String
 
   @@index([userId, deadline])
   @@index([userId, createdAt])
