@@ -11,7 +11,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
 
-  // Require at least 2 characters to trigger search
   if (q.length < 2) {
     return NextResponse.json(
       { tasks: [], habits: [], goals: [] },
