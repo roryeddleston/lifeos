@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Calculator } from "lucide-react";
+import { Minus, Plus, Calculator, Check } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
 import InlineGoalTitle from "./InlineGoalTitle";
 import { formatDateGB, formatDueLabel } from "@/lib/date";
@@ -15,8 +15,8 @@ type Goal = {
   targetValue: number;
   currentValue: number;
   unit: string;
-  deadline: string | null; // ISO when serialized
-  createdAt: string; // ISO when serialized
+  deadline: string | null;
+  createdAt: string;
 };
 
 export default function GoalCard({ goal }: { goal: Goal }) {
@@ -25,21 +25,46 @@ export default function GoalCard({ goal }: { goal: Goal }) {
   const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState(goal);
-
-  // --- animation like HabitStreakBars ---
   const [ready, setReady] = useState(false);
   const [reduced, setReduced] = useState(false);
+
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
+  const customInputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     setReduced(!!mql?.matches);
     const id = requestAnimationFrame(() => setReady(true));
     return () => cancelAnimationFrame(id);
   }, []);
-  // --------------------------------------
 
-  // custom adjust panel
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customAmount, setCustomAmount] = useState<string>("");
+  useEffect(() => {
+    if (customOpen) {
+      requestAnimationFrame(() => {
+        customInputRef.current?.focus();
+      });
+    }
+  }, [customOpen]);
+
+  // ❗️Close custom panel if clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setCustomOpen(false);
+        setCustomAmount("");
+      }
+    }
+
+    if (customOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [customOpen]);
 
   const pct = Math.max(
     0,
@@ -103,19 +128,17 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     }
   }
 
-  // custom amount apply
-  function applyCustom(sign: "add" | "sub") {
+  function applyCustom() {
     const n = Number(customAmount);
     if (!Number.isFinite(n) || n <= 0) {
       toast({ variant: "error", title: "Enter a positive number" });
       return;
     }
-    const delta = sign === "add" ? n : -n;
-    const next = clampToRange(local.currentValue + delta);
+    const next = clampToRange(local.currentValue + n);
     setLocal((c) => ({ ...c, currentValue: next }));
+    patch({ currentValue: next });
     setCustomAmount("");
     setCustomOpen(false);
-    patch({ currentValue: next });
   }
 
   const btnBase =
@@ -126,7 +149,6 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     backgroundColor: "var(--twc-surface)",
   };
 
-  // compute animated width (0% on first paint, then target; still animates on updates)
   const targetWidth = `${pct}%`;
   const animatedWidth = reduced ? targetWidth : ready ? targetWidth : "0%";
   const transition = reduced
@@ -134,8 +156,8 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     : "width 2000ms cubic-bezier(0.22, 1, 0.36, 1)";
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-      {/* Left: title + meta + progress */}
+    <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      {/* Left */}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <InlineGoalTitle
@@ -161,9 +183,9 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           )}
         </div>
 
-        {/* Progress bar (animated) */}
+        {/* Progress bar */}
         <div
-          className="mt-2 h-2 w-full rounded-full"
+          className="mt-2 w-full h-2 rounded-full"
           style={{
             backgroundColor:
               "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
@@ -184,10 +206,11 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           />
         </div>
 
-        {/* Custom adjust panel */}
+        {/* Custom Panel */}
         {customOpen && (
           <div
-            className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg p-2"
+            ref={panelRef}
+            className="mt-3 inline-flex flex-wrap items-center gap-2 md:gap-4 rounded-lg p-2"
             style={{
               border: "1px solid var(--twc-border)",
               backgroundColor:
@@ -198,6 +221,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               Amount
             </label>
             <input
+              ref={customInputRef}
               type="number"
               inputMode="decimal"
               step="any"
@@ -205,23 +229,31 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               placeholder="e.g. 10"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              className="h-8 w-28 rounded-md px-2 text-sm focus-visible:ring-2"
+              className="h-8 w-36 rounded-md px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
               style={boxStyle}
               onKeyDown={(e) => {
-                if (e.key === "Enter") applyCustom("add");
+                if (e.key === "Enter") applyCustom();
                 if (e.key === "Escape") {
                   setCustomAmount("");
                   setCustomOpen(false);
                 }
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--twc-surface)";
-              }}
             />
+
+            <button
+              type="button"
+              onClick={applyCustom}
+              disabled={customAmount.trim() === "" || Number(customAmount) <= 0}
+              className={`inline-flex items-center gap-2 rounded-md px-3 text-sm text-white transition active:scale-[0.98] h-8 ${
+                customAmount.trim() !== "" && Number(customAmount) > 0
+                  ? "bg-[var(--twc-accent)] cursor-pointer"
+                  : "bg-[var(--twc-accent)] opacity-50 cursor-not-allowed"
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              Save
+            </button>
+
             <button
               type="button"
               className={`${btnBase} px-3 h-8`}
@@ -230,15 +262,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
                 setCustomAmount("");
                 setCustomOpen(false);
               }}
-              aria-label="Close custom adjust"
               title="Close"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--twc-surface)";
-              }}
             >
               <span className="text-xs">Close</span>
             </button>
@@ -246,7 +270,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         )}
       </div>
 
-      {/* Right: controls */}
+      {/* Right controls */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -254,15 +278,6 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           disabled={busy || isPending}
           className={`${btnBase} h-8 w-8`}
           style={boxStyle}
-          title={`- ${step}`}
-          aria-label="Decrement"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
-          }}
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -273,34 +288,17 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           disabled={busy || isPending}
           className={`${btnBase} h-8 w-8`}
           style={boxStyle}
-          title={`+ ${step}`}
-          aria-label="Increment"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
-          }}
         >
           <Plus className="h-4 w-4" />
         </button>
 
         <button
           type="button"
-          onClick={() => setCustomOpen((v) => !v)}
+          onClick={() => setCustomOpen(true)}
           className={`${btnBase} w-auto px-2 gap-1 h-8`}
           style={boxStyle}
           aria-expanded={customOpen}
-          aria-controls={`custom-adjust-${local.id}`}
-          title="Add/subtract custom amount"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor =
-              "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--twc-surface)";
-          }}
+          title="Custom adjust"
         >
           <Calculator className="h-4 w-4" />
           <span className="text-xs">Custom</span>
