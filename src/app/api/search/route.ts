@@ -35,7 +35,16 @@ export async function GET(req: Request) {
           userId,
           name: { contains: q, mode: "insensitive" },
         },
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          completions: {
+            select: {
+              date: true,
+              completed: true,
+            },
+          },
+        },
         orderBy: [{ createdAt: "desc" }],
         take: 5,
       }),
