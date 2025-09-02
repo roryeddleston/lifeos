@@ -38,6 +38,14 @@ function maxRun(arr: boolean[]) {
   return best;
 }
 
+type TimelineItem = { iso: string; completed: boolean };
+type HabitView = {
+  id: string;
+  name: string;
+  timeline: TimelineItem[];
+  streak: number;
+};
+
 export default async function HabitsPage() {
   const { userId } = await auth();
   if (!userId) return null;
@@ -71,13 +79,13 @@ export default async function HabitsPage() {
     };
   });
 
-  const view = habits.map((h) => {
+  const view: HabitView[] = habits.map((h): HabitView => {
     const map = new Map<string, boolean>();
     for (const r of h.completions) {
       map.set(toISODate(r.date), !!r.completed);
     }
 
-    const timeline = days.map((d) => ({
+    const timeline: TimelineItem[] = days.map((d) => ({
       iso: d.iso,
       completed: map.get(d.iso) ?? false,
     }));
@@ -93,20 +101,30 @@ export default async function HabitsPage() {
 
   const totalCells = view.length * days.length;
   const completedCells = view.reduce(
-    (sum, h) => sum + h.timeline.filter((t) => t.completed).length,
+    (sum: number, h: HabitView) =>
+      sum + h.timeline.filter((t: TimelineItem) => t.completed).length,
     0
   );
+
   const completionPct =
     totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0;
 
-  const currentStreakMax = view.reduce((m, h) => Math.max(m, h.streak), 0);
+  const currentStreakMax = view.reduce(
+    (m: number, h: HabitView) => Math.max(m, h.streak),
+    0
+  );
   const bestStreakMax = view.reduce(
-    (m, h) => Math.max(m, maxRun(h.timeline.map((t) => t.completed))),
+    (m: number, h: HabitView) =>
+      Math.max(m, maxRun(h.timeline.map((t: TimelineItem) => t.completed))),
     0
   );
 
-  const perDayCounts = days.map((_, idx) =>
-    view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
+  const perDayCounts: number[] = days.map((_, idx: number) =>
+    view.reduce(
+      (sum: number, h: HabitView) =>
+        h.timeline[idx]?.completed ? sum + 1 : sum,
+      0
+    )
   );
 
   return (
@@ -135,18 +153,10 @@ export default async function HabitsPage() {
                   width: `${completionPct}%`,
                   backgroundColor: "var(--twc-accent)",
                 }}
-                aria-label={`${completionPct}% completion`}
-                title={`${completionPct}% completion`}
               />
             </div>
             <div className="mt-2 text-xs" style={{ color: "var(--twc-muted)" }}>
-              {completionPct}% complete
-              {totalCells > 0 && (
-                <>
-                  {" "}
-                  ({completedCells}/{totalCells} checks)
-                </>
-              )}
+              {completionPct}% complete ({completedCells}/{totalCells} checks)
             </div>
           </div>
         </Card>
@@ -236,7 +246,7 @@ export default async function HabitsPage() {
           </div>
         ) : (
           <ul>
-            {view.map((h, i) => (
+            {view.map((h: HabitView, i: number) => (
               <li
                 key={h.id}
                 className="px-4 py-3"
