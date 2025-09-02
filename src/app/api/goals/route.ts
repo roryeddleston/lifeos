@@ -1,76 +1,69 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
-import { requireUserIdOrJson } from "@/lib/authz";
 
-const CreateGoalSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().trim().nullable().optional(),
-  targetValue: z.coerce.number().int().positive(),
-  unit: z.string().min(1),
-  deadline: z.string().trim().nullable().optional(), // ISO or YYYY-MM-DD
-});
-
-function normalizeToDate(input: unknown): Date | null {
-  if (input === null || input === undefined || input === "") return null;
-  if (typeof input === "string") {
-    const s = input.trim();
-    if (!s) return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      const d = new Date(`${s}T00:00:00.000Z`);
-      if (!Number.isNaN(d.getTime())) return d;
-    }
-    const t = Date.parse(s);
-    if (!Number.isNaN(t)) return new Date(t);
-  }
-  throw new Error("Invalid date");
-}
-
+// GET /api/goals — list goals
 export async function GET() {
-  const uid = await requireUserIdOrJson();
-  if (uid instanceof NextResponse) return uid; // 401
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const goals = await prisma.goal.findMany({
-    where: { userId: uid },
-    orderBy: { createdAt: "asc" },
-  });
-  return NextResponse.json(goals);
+  try {
+    const goals = await prisma.goal.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+    return NextResponse.json(goals);
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Failed to fetch goals" },
+      { status: 500 }
+    );
+  }
 }
 
+// POST /api/goals — create goal
 export async function POST(req: Request) {
-  const uid = await requireUserIdOrJson();
-  if (uid instanceof NextResponse) return uid; // 401
-
-  const json = await req.json().catch(() => ({}));
-  const parsed = CreateGoalSchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 }
-    );
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let deadline: Date | null = null;
   try {
-    deadline = normalizeToDate(parsed.data.deadline ?? null);
-  } catch {
+    const body = await req.json();
+    const { title, targetValue, unit, deadline } = body ?? {};
+
+    if (!title || !String(title).trim()) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+    const target = Number(targetValue);
+    if (!Number.isFinite(target) || target <= 0) {
+      return NextResponse.json(
+        { error: "targetValue must be > 0" },
+        { status: 400 }
+      );
+    }
+    if (!unit || !String(unit).trim()) {
+      return NextResponse.json({ error: "Unit is required" }, { status: 400 });
+    }
+
+    const created = await prisma.goal.create({
+      data: {
+        title: String(title).trim(),
+        targetValue: target,
+        unit: String(unit).trim(),
+        deadline: deadline ? new Date(deadline) : null,
+        userId, // ✅ Scope to the authenticated user
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    console.error(e);
     return NextResponse.json(
-      { error: "Invalid deadline. Use YYYY-MM-DD or ISO datetime." },
-      { status: 400 }
+      { error: "Failed to create goal" },
+      { status: 500 }
     );
   }
-
-  const created = await prisma.goal.create({
-    data: {
-      title: parsed.data.title.trim(),
-      description: parsed.data.description ?? null,
-      targetValue: parsed.data.targetValue,
-      currentValue: 0,
-      unit: parsed.data.unit.trim(),
-      deadline,
-      userId: uid,
-    },
-  });
-
-  return NextResponse.json(created, { status: 201 });
 }

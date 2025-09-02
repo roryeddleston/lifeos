@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireUserId } from "@/lib/auth-server";
+import { auth } from "@clerk/nextjs/server";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
@@ -13,14 +13,17 @@ function startOfDayUTC(d = new Date()) {
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   );
 }
+
 function addDays(d: Date, n: number) {
   const copy = new Date(d);
   copy.setUTCDate(copy.getUTCDate() + n);
   return copy;
 }
+
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
+
 function maxRun(arr: boolean[]) {
   let best = 0,
     curr = 0;
@@ -36,7 +39,8 @@ function maxRun(arr: boolean[]) {
 }
 
 export default async function HabitsPage() {
-  const userId = await requireUserId("/habits");
+  const { userId } = await auth();
+  if (!userId) return null;
 
   const today = startOfDayUTC();
   const start = addDays(today, -6);
@@ -48,7 +52,7 @@ export default async function HabitsPage() {
     select: {
       id: true,
       name: true,
-      records: {
+      completions: {
         where: { date: { gte: start, lt: end } },
         select: { date: true, completed: true },
       },
@@ -69,16 +73,21 @@ export default async function HabitsPage() {
 
   const view = habits.map((h) => {
     const map = new Map<string, boolean>();
-    for (const r of h.records) map.set(toISODate(r.date), !!r.completed);
+    for (const r of h.completions) {
+      map.set(toISODate(r.date), !!r.completed);
+    }
+
     const timeline = days.map((d) => ({
       iso: d.iso,
       completed: map.get(d.iso) ?? false,
     }));
+
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
       else break;
     }
+
     return { id: h.id, name: h.name, timeline, streak };
   });
 
@@ -99,9 +108,6 @@ export default async function HabitsPage() {
   const perDayCounts = days.map((_, idx) =>
     view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
   );
-  const chartHeight = 35;
-  const barWidth = 12;
-  const gap = 8;
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
@@ -110,7 +116,6 @@ export default async function HabitsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* This Week */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -146,7 +151,6 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Streaks */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Streaks</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -158,7 +162,6 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Last 7 Days */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -167,9 +170,9 @@ export default async function HabitsPage() {
           <div className="mt-4">
             <SparkBars
               counts={perDayCounts}
-              height={chartHeight}
-              barWidth={barWidth}
-              gap={gap}
+              height={35}
+              barWidth={12}
+              gap={8}
             />
             <div
               className="mt-2 grid grid-cols-7 text-center text-xs"
@@ -183,7 +186,6 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
-      {/* Habit list */}
       <Card className="p-0">
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <div

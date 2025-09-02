@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { TaskStatus } from "@prisma/client";
 import { getUserId } from "@/lib/user";
 
-/* ----------------- helpers & type guards ----------------- */
-
 type IncomingTask = { title: string; dueDate?: string | null };
 
 function isRecord(u: unknown): u is Record<string, unknown> {
@@ -30,17 +28,8 @@ function isIncomingTaskArray(u: unknown): u is IncomingTask[] {
 function normalizeToList(body: unknown): IncomingTask[] {
   if (!isRecord(body)) return [];
 
-  // 1) Single title
-  if (typeof body.title === "string") {
-    return [{ title: body.title }];
-  }
-
-  // 2) Array of titles
-  if (isStringArray(body.titles)) {
-    return body.titles.map((t) => ({ title: t }));
-  }
-
-  // 3) Multiline text block
+  if (typeof body.title === "string") return [{ title: body.title }];
+  if (isStringArray(body.titles)) return body.titles.map((t) => ({ title: t }));
   if (typeof body.text === "string") {
     return body.text
       .split(/\r?\n/)
@@ -48,8 +37,6 @@ function normalizeToList(body: unknown): IncomingTask[] {
       .filter(Boolean)
       .map((t) => ({ title: t }));
   }
-
-  // 4) Full task objects
   if (isIncomingTaskArray(body.tasks)) {
     return body.tasks.map((t) => ({
       title: t.title,
@@ -60,29 +47,9 @@ function normalizeToList(body: unknown): IncomingTask[] {
   return [];
 }
 
-function parseDateLoose(input: string | null | undefined): Date | null {
-  if (!input) return null;
-  const s = input.trim();
-  if (!s) return null;
-
-  // Accept YYYY-MM-DD -> midnight UTC
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const d = new Date(`${s}T00:00:00.000Z`);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : new Date(t);
-}
-
-/* --------------------------- POST --------------------------- */
-
 export async function POST(req: Request) {
   const userId = await getUserId();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Read once as text; if JSON parse fails, treat as plain text payload.
   const bodyText = await req.text().catch(() => "");
   let parsed: unknown = null;
   try {
@@ -90,43 +57,31 @@ export async function POST(req: Request) {
   } catch {
     parsed = bodyText ? { text: bodyText } : null;
   }
+
   if (!parsed) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const incoming = normalizeToList(parsed);
 
-  // Trim & coerce to DB shape
-  const titlesAndDates = incoming
+  const toCreate = incoming
     .map(({ title, dueDate }) => ({
       title: (title ?? "").trim(),
-      dueDate: parseDateLoose(dueDate ?? null),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      status: TaskStatus.TODO,
+      position: 0,
+      userId,
     }))
     .filter((t) => t.title.length > 0);
 
-  if (titlesAndDates.length === 0) {
+  if (toCreate.length === 0) {
     return NextResponse.json({ error: "No valid tasks" }, { status: 400 });
   }
 
-  // Compute next positions for this user
-  const max = await prisma.task.aggregate({
-    where: { userId },
-    _max: { position: true },
-  });
-  const startPos = (max._max.position ?? 0) + 1;
-
-  // Create and return rows (createMany doesn't return rows)
   const created = await prisma.$transaction(
-    titlesAndDates.map((t, idx) =>
+    toCreate.map((data) =>
       prisma.task.create({
-        data: {
-          title: t.title,
-          dueDate: t.dueDate,
-          status: TaskStatus.TODO,
-          position: startPos + idx,
-          userId,
-          // completedAt remains null for TODO
-        },
+        data,
         select: {
           id: true,
           title: true,
@@ -134,7 +89,6 @@ export async function POST(req: Request) {
           dueDate: true,
           createdAt: true,
           position: true,
-          completedAt: true,
         },
       })
     )

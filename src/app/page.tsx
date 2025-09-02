@@ -1,5 +1,5 @@
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { requireUserId } from "@/lib/auth-server";
 import Card from "@/components/cards/Card";
 import StatCardsRow, {
   type StatItem,
@@ -9,7 +9,6 @@ import HabitStreakBars from "@/components/dashboard/HabitStreakBars";
 import RecentlyCompleted from "@/components/dashboard/RecentlyCompleted";
 import ComingSoon from "@/components/dashboard/ComingSoon";
 
-/* ---------- UTC day helpers ---------- */
 function startOfDayUTC(d = new Date()) {
   return new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
@@ -32,17 +31,16 @@ function currentStreakFromSet(completedISOSet: Set<string>, todayISO: string) {
   return streak;
 }
 
-// Dashboard is user-specific; avoid caching across users.
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Home() {
-  const userId = await requireUserId("/");
+  const { userId } = await auth();
+  if (!userId) return null;
 
   const today = startOfDayUTC();
   const since = addDays(today, -60);
   const todayISO = today.toISOString().slice(0, 10);
 
-  // Run everything in parallel to minimize latency
   const [
     habits,
     recentCompletedDb,
@@ -56,7 +54,7 @@ export default async function Home() {
       select: {
         id: true,
         name: true,
-        records: {
+        completions: {
           where: {
             date: { gte: since, lte: today },
             completed: true,
@@ -66,13 +64,21 @@ export default async function Home() {
       },
     }),
     prisma.task.findMany({
-      where: { userId, status: "DONE", completedAt: { not: null } },
+      where: {
+        userId,
+        status: "DONE",
+        completedAt: { not: null },
+      },
       orderBy: { completedAt: "desc" },
       take: 5,
       select: { id: true, title: true, completedAt: true },
     }),
-    prisma.task.count({ where: { userId, status: { not: "DONE" } } }),
-    // Minimal fields to compute "on track" client-side
+    prisma.task.count({
+      where: {
+        userId,
+        status: { not: "DONE" },
+      },
+    }),
     prisma.goal.findMany({
       where: { userId },
       select: { currentValue: true, targetValue: true },
@@ -80,10 +86,9 @@ export default async function Home() {
     prisma.goal.count({ where: { userId } }),
   ]);
 
-  // Habit streaks + “completed today”
   const streaks = habits.map((h) => {
     const completedSet = new Set(
-      h.records.map((r) => r.date.toISOString().slice(0, 10))
+      h.completions.map((r) => r.date.toISOString().slice(0, 10))
     );
     return {
       id: h.id,
@@ -93,13 +98,12 @@ export default async function Home() {
   });
 
   const habitsCompletedToday = habits.reduce((sum, h) => {
-    const hasToday = h.records.some(
+    const hasToday = h.completions.some(
       (r) => r.date.toISOString().slice(0, 10) === todayISO
     );
     return sum + (hasToday ? 1 : 0);
   }, 0);
 
-  // Recently completed display formatting
   const timeFmt = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -112,11 +116,9 @@ export default async function Home() {
     when: t.completedAt ? timeFmt.format(t.completedAt) : "—",
   }));
 
-  // Real stats
   const goalsOnTrackCurrent = goalsSlim.filter(
     (g) => g.currentValue < g.targetValue
   ).length;
-  const goalsOnTrackTotal = totalGoalsCount;
 
   const statItems: StatItem[] = [
     {
@@ -134,7 +136,7 @@ export default async function Home() {
     {
       label: "Goals on track",
       value: goalsOnTrackCurrent,
-      total: goalsOnTrackTotal,
+      total: totalGoalsCount,
       positive: true,
       iconKey: "target",
     },
@@ -143,7 +145,6 @@ export default async function Home() {
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
       <DashboardHeader />
-
       <StatCardsRow items={statItems} />
 
       <Card

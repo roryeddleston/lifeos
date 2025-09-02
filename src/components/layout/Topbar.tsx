@@ -15,7 +15,7 @@ import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { usePathname } from "next/navigation";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { SignedIn, UserButton } from "@clerk/nextjs";
 
 /* ---------- date (client-only to avoid hydration mismatch) ---------- */
 function formatShortGB(d = new Date()) {
@@ -42,18 +42,16 @@ function iconForCode(code: number): Weather["icon"] {
 }
 
 async function getWeather(): Promise<Weather> {
-  return new Promise<Weather>((resolve) => {
+  return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve({ temp: null, icon: null });
     navigator.geolocation.getCurrentPosition(
-      async (pos: GeolocationPosition) => {
+      async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`;
           const r = await fetch(url, { cache: "no-store" });
           if (!r.ok) throw new Error("weather fetch failed");
-          const j: {
-            current?: { weather_code?: number; temperature_2m?: number };
-          } = await r.json();
+          const j = await r.json();
           const code = j?.current?.weather_code ?? null;
           const temp = j?.current?.temperature_2m ?? null;
           resolve({ temp, icon: code != null ? iconForCode(code) : null });
@@ -119,13 +117,10 @@ function QuickAdd() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
-  // Close on route change
   useEffect(() => {
     if (open) setOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, open]);
 
-  // Close on outside click/tap
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -139,7 +134,6 @@ function QuickAdd() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -148,14 +142,6 @@ function QuickAdd() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
-
-  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor =
-      "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
-  };
-  const handleMouseLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor = "transparent";
-  };
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -192,173 +178,17 @@ function QuickAdd() {
               style={{ color: "var(--twc-text)" }}
               role="menuitem"
               onClick={() => setOpen(false)}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               {item}
             </Link>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------- user menu ---------- */
-function UserMenu() {
-  const { user, isLoading } = useUser();
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  const pathname = usePathname();
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const el = wrapRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  if (isLoading) {
-    return (
-      <div
-        aria-busy="true"
-        className="h-8 w-8 rounded-full"
-        style={{
-          background:
-            "color-mix(in oklab, var(--twc-text) 10%, var(--twc-surface))",
-        }}
-      />
-    );
-  }
-
-  if (!user) {
-    const returnTo = encodeURIComponent(pathname || "/");
-    return (
-      <Link
-        href={`/api/auth/login?returnTo=${returnTo}`}
-        className="inline-flex items-center rounded-full px-3 py-1.5 text-sm focus:outline-none focus-visible:ring-2"
-        style={{
-          border: "1px solid var(--twc-border)",
-          color: "var(--twc-text)",
-          backgroundColor: "var(--twc-surface)",
-        }}
-      >
-        Log in
-      </Link>
-    );
-  }
-
-  const displayName =
-    (user.name && user.name.trim()) ||
-    (user.email && user.email.split("@")[0]) ||
-    "You";
-  const initial = displayName.charAt(0).toUpperCase();
-
-  const onHover = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor =
-      "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))";
-  };
-  const onLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor = "transparent";
-  };
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full px-1 py-1 focus:outline-none focus-visible:ring-2 cursor-pointer"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={displayName}
-        style={{
-          border: "1px solid var(--twc-border)",
-          backgroundColor: "var(--twc-surface)",
-          color: "var(--twc-text)",
-        }}
-      >
-        {user.picture ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.picture}
-            alt={displayName}
-            className="h-7 w-7 rounded-full object-cover cursor-pointer"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <span
-            className="h-7 w-7 inline-flex items-center justify-center rounded-full text-sm font-medium cursor-pointer"
-            aria-hidden
-            style={{
-              background:
-                "color-mix(in oklab, var(--twc-text) 10%, var(--twc-surface))",
-            }}
-          >
-            {initial}
-          </span>
-        )}
-        {/* No displayName text shown in the topbar */}
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 mt-2 w-56 rounded-xl border p-1 shadow-xl"
-          role="menu"
-          style={{
-            borderColor: "var(--twc-border)",
-            backgroundColor: "var(--twc-surface)",
-            color: "var(--twc-text)",
-          }}
-        >
-          {/* Header (name only, no email) */}
-          <div className="px-3 py-2 text-sm">
-            <div className="font-medium truncate">{displayName}</div>
-          </div>
-          <hr
-            style={{
-              border: 0,
-              height: 1,
-              background:
-                "color-mix(in oklab, var(--twc-text) 10%, transparent)",
-            }}
-          />
-
-          <Link
-            href="/"
-            className="block rounded-lg px-3 py-2 text-sm transition-colors"
-            role="menuitem"
-            style={{ color: "var(--twc-text)" }}
-            onMouseEnter={onHover}
-            onMouseLeave={onLeave}
-          >
-            Home
-          </Link>
-
-          <Link
-            href="/api/auth/logout"
-            className="block rounded-lg px-3 py-2 text-sm transition-colors"
-            role="menuitem"
-            style={{ color: "var(--twc-text)" }}
-            onMouseEnter={onHover}
-            onMouseLeave={onLeave}
-          >
-            Log out
-          </Link>
         </div>
       )}
     </div>
@@ -392,12 +222,11 @@ export default function Topbar(props: TopbarProps) {
       }}
     >
       <div className="mx-auto max-w-6xl w-full px-3 md:px-4">
-        {/* Row: search left, everything else right */}
         <div className="h-14 md:h-[60px] flex items-center justify-between gap-3">
           {/* LEFT: search */}
           <div className="min-w-0">{showSearch && <GlobalSearch />}</div>
 
-          {/* RIGHT: date+weather + actions */}
+          {/* RIGHT: date + weather + actions */}
           <div className="flex items-center gap-3">
             <div
               className="hidden md:flex items-center gap-3 text-sm"
@@ -418,11 +247,13 @@ export default function Topbar(props: TopbarProps) {
               <WeatherPill />
             </div>
 
-            {/* Actions */}
+            {/* Actions: Theme, QuickAdd, Avatar */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <QuickAdd />
-              <UserMenu />
+              <SignedIn>
+                <UserButton afterSignOutUrl="/sign-in" />
+              </SignedIn>
             </div>
           </div>
         </div>

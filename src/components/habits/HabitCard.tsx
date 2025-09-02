@@ -144,19 +144,12 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition"
+            className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
             title="Show history"
             style={{
               border: "1px solid var(--twc-border)",
               backgroundColor: "var(--twc-surface)",
               color: "var(--twc-text)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor =
-                "color-mix(in oklab, var(--twc-text) 5%, var(--twc-surface))";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--twc-surface)";
             }}
           >
             {showHistory ? (

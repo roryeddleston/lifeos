@@ -1,8 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUserIdOrJson } from "@/lib/authz";
 
-// Shape of the fields we allow updating on a Goal
 type GoalUpdatePayload = Partial<{
   title: string;
   unit: string;
@@ -11,7 +10,6 @@ type GoalUpdatePayload = Partial<{
   currentValue: number;
 }>;
 
-// Shape of the incoming JSON (deadline arrives as string | null)
 type GoalUpdateBody = Partial<{
   title: string;
   unit: string;
@@ -20,93 +18,109 @@ type GoalUpdateBody = Partial<{
   currentValue: number | string;
 }>;
 
-type RouteParams = { params: Promise<{ id: string }> };
+// PATCH /api/goals/:id — partial update
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-/** GET /api/goals/:id — fetch one goal (scoped to user) */
-export async function GET(_req: Request, { params }: RouteParams) {
-  const uid = await requireUserIdOrJson();
-  if (uid instanceof NextResponse) return uid;
+  try {
+    const { id } = await ctx.params;
+    const body = (await req.json()) as GoalUpdateBody;
 
-  const { id } = await params;
+    const existing = await prisma.goal.findUnique({
+      where: { id },
+    });
 
-  const goal = await prisma.goal.findFirst({
-    where: { id, userId: uid },
-  });
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-  if (!goal) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(goal);
+    const data: GoalUpdatePayload = {};
+
+    if (typeof body.title === "string") data.title = body.title.trim();
+    if (typeof body.unit === "string") data.unit = body.unit.trim();
+
+    if (body.deadline === null) {
+      data.deadline = null;
+    } else if (typeof body.deadline === "string" && body.deadline) {
+      data.deadline = new Date(body.deadline);
+    }
+
+    if (typeof body.targetValue !== "undefined") {
+      const tv = Number(body.targetValue);
+      if (!Number.isFinite(tv) || tv <= 0) {
+        return NextResponse.json(
+          { error: "targetValue must be > 0" },
+          { status: 400 }
+        );
+      }
+      data.targetValue = tv;
+    }
+
+    if (typeof body.currentValue !== "undefined") {
+      let cv = Number(body.currentValue);
+      if (!Number.isFinite(cv)) {
+        return NextResponse.json(
+          { error: "currentValue must be a number" },
+          { status: 400 }
+        );
+      }
+      if (typeof data.targetValue === "number") {
+        cv = Math.max(0, Math.min(cv, data.targetValue));
+      } else {
+        cv = Math.max(0, cv);
+      }
+      data.currentValue = cv;
+    }
+
+    const updated = await prisma.goal.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json(updated);
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Failed to update goal" },
+      { status: 500 }
+    );
+  }
 }
 
-/** PATCH /api/goals/:id — partial update */
-export async function PATCH(req: Request, { params }: RouteParams) {
-  const uid = await requireUserIdOrJson();
-  if (uid instanceof NextResponse) return uid;
-
-  const { id } = await params;
-  const body = (await req.json().catch(() => ({}))) as GoalUpdateBody;
-
-  const data: GoalUpdatePayload = {};
-
-  if (typeof body.title === "string") data.title = body.title.trim();
-  if (typeof body.unit === "string") data.unit = body.unit.trim();
-
-  if (body.deadline === null) {
-    data.deadline = null;
-  } else if (typeof body.deadline === "string" && body.deadline) {
-    const d = new Date(body.deadline);
-    if (Number.isNaN(d.getTime())) {
-      return NextResponse.json({ error: "Invalid deadline" }, { status: 400 });
-    }
-    data.deadline = d;
+// DELETE /api/goals/:id — delete
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (typeof body.targetValue !== "undefined") {
-    const tv = Number(body.targetValue);
-    if (!Number.isFinite(tv) || tv <= 0) {
-      return NextResponse.json(
-        { error: "targetValue must be > 0" },
-        { status: 400 }
-      );
+  try {
+    const { id } = await ctx.params;
+
+    const existing = await prisma.goal.findUnique({
+      where: { id },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    data.targetValue = tv;
+
+    await prisma.goal.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Failed to delete goal" },
+      { status: 500 }
+    );
   }
-
-  if (typeof body.currentValue !== "undefined") {
-    let cv = Number(body.currentValue);
-    if (!Number.isFinite(cv)) {
-      return NextResponse.json(
-        { error: "currentValue must be a number" },
-        { status: 400 }
-      );
-    }
-    // If targetValue included in this PATCH, clamp to it; otherwise at least 0
-    if (typeof data.targetValue === "number") {
-      cv = Math.max(0, Math.min(cv, data.targetValue));
-    } else {
-      cv = Math.max(0, cv);
-    }
-    data.currentValue = cv;
-  }
-
-  // Scope update to user
-  const updated = await prisma.goal.update({
-    where: { id, userId: uid },
-    data,
-  });
-
-  return NextResponse.json(updated);
-}
-
-/** DELETE /api/goals/:id — delete (scoped to user) */
-export async function DELETE(_req: Request, { params }: RouteParams) {
-  const uid = await requireUserIdOrJson();
-  if (uid instanceof NextResponse) return uid;
-
-  const { id } = await params;
-
-  await prisma.goal.delete({
-    where: { id, userId: uid },
-  });
-
-  return NextResponse.json({ ok: true });
 }

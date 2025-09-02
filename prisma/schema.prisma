@@ -3,20 +3,20 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /* -------------------- Habits -------------------- */
 
 model Habit {
-  id         String        @id @default(cuid())
-  name       String
-  createdAt  DateTime      @default(now())
-  records    HabitRecord[]
-  userId     String?       // will hold Auth0 `sub` later
+  id           String        @id @default(cuid())
+  name         String
+  createdAt    DateTime      @default(now())
+  completions  HabitRecord[] @relation("HabitCompletions")
+  userId       String
 
-  // Listing and scoping by user; sort newest-first
   @@index([userId, createdAt])
 }
 
@@ -25,15 +25,11 @@ model HabitRecord {
   date      DateTime
   completed Boolean  @default(false)
 
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  habit     Habit    @relation("HabitCompletions", fields: [habitId], references: [id], onDelete: Cascade)
   habitId   String
 
-  // One record per habit per day
   @@unique([habitId, date], name: "habitId_date")
-
-  // Common filters: by habit, completed flag, then date window
   @@index([habitId, completed, date])
-  // Fallback for cross-habit date windows (dashboards)
   @@index([date])
 }
 
@@ -52,30 +48,15 @@ model Task {
   dueDate     DateTime?
   status      TaskStatus  @default(TODO)
   createdAt   DateTime    @default(now())
-
-  // manual sort order (per user)
   position    Int         @default(0)
-
-  // per-user data scoping (Auth0-ready: store `sub` here)
-  userId      String?
-
-  // true completion timestamp (null until DONE)
+  userId      String
   completedAt DateTime?
 
-  // Recently done lists
   @@index([status, completedAt])
-
-  // Your views/filters: status + due windows (+ deterministic tie-breaker)
   @@index([status, dueDate, createdAt])
-
-  // Per-user filters for list pages
   @@index([userId, status, dueDate])
   @@index([userId, createdAt])
-
-  // Efficient reorder within a user's list
   @@index([userId, position])
-
-  // Simple helpers (keep dueDate indexed for direct range scans)
   @@index([dueDate])
 }
 
@@ -90,9 +71,8 @@ model Goal {
   unit         String
   deadline     DateTime?
   createdAt    DateTime @default(now())
-  userId       String?  // Auth0 `sub` later
+  userId       String
 
-  // Per-user upcoming and recent lists
   @@index([userId, deadline])
   @@index([userId, createdAt])
 }

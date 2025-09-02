@@ -1,24 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { TaskStatus } from "@prisma/client";
 import { z } from "zod";
 import { getUserId } from "@/lib/user";
 
-/* -------------------- utils -------------------- */
-
+/** Accepts YYYY-MM-DD, full ISO string, Date, or null; returns Date|null or throws */
 function normalizeToDate(input: unknown): Date | null {
   if (input === null || input === undefined || input === "") return null;
   if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
-
   if (typeof input === "string") {
     const s = input.trim();
     if (!s) return null;
-
-    // Accept YYYY-MM-DD as UTC midnight
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const d = new Date(`${s}T00:00:00.000Z`);
       if (!Number.isNaN(d.getTime())) return d;
     }
-
     const t = Date.parse(s);
     if (!Number.isNaN(t)) return new Date(t);
   }
@@ -27,20 +23,15 @@ function normalizeToDate(input: unknown): Date | null {
 
 const PatchSchema = z.object({
   title: z.string().min(1).optional(),
-  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
+  status: z.nativeEnum(TaskStatus).optional(),
   dueDate: z.union([z.string(), z.date(), z.null()]).optional(),
   position: z.number().int().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-/* --------------------- GET --------------------- */
-
 export async function GET(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
 
   const task = await prisma.task.findFirst({
@@ -48,12 +39,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
     select: {
       id: true,
       title: true,
-      description: true,
       status: true,
       dueDate: true,
       position: true,
       completedAt: true,
-      createdAt: true,
     },
   });
 
@@ -61,81 +50,57 @@ export async function GET(_req: Request, { params }: RouteParams) {
   return NextResponse.json(task);
 }
 
-/* -------------------- PATCH -------------------- */
-
 export async function PATCH(req: Request, { params }: RouteParams) {
   const userId = await getUserId();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
-  const json = await req.json().catch(() => ({}));
+  const json = await req.json();
 
-  const parsed = PatchSchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+  const parsed = PatchSchema.parse(json);
 
-  // Ensure task belongs to user
-  const existing = await prisma.task.findFirst({ where: { id, userId } });
-  if (!existing)
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const p = parsed.data;
   const data: Record<string, unknown> = {};
+  if (parsed.title !== undefined) data.title = parsed.title;
+  if (parsed.position !== undefined) data.position = parsed.position;
 
-  if (p.title !== undefined) data.title = p.title;
-  if (p.position !== undefined) data.position = p.position;
-
-  if (p.dueDate !== undefined) {
+  if (parsed.dueDate !== undefined) {
     try {
-      data.dueDate = normalizeToDate(p.dueDate);
+      data.dueDate = normalizeToDate(parsed.dueDate);
     } catch {
-      return NextResponse.json(
-        { error: "Invalid dueDate. Use YYYY-MM-DD or ISO datetime." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid dueDate" }, { status: 400 });
     }
   }
 
-  if (p.status !== undefined) {
-    data.status = p.status;
-    data.completedAt = p.status === "DONE" ? new Date() : null;
+  if (parsed.status !== undefined) {
+    data.status = parsed.status;
+    data.completedAt = parsed.status === "DONE" ? new Date() : null;
   }
 
-  const updated = await prisma.task.update({
-    where: { id },
+  const updated = await prisma.task.updateMany({
+    where: { id, userId },
     data,
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      dueDate: true,
-      position: true,
-      completedAt: true,
-    },
   });
 
-  return NextResponse.json(updated);
-}
+  if (updated.count === 0)
+    return NextResponse.json(
+      { error: "Not found or unauthorized" },
+      { status: 404 }
+    );
 
-/* ------------------- DELETE ------------------- */
+  const task = await prisma.task.findUnique({ where: { id } });
+
+  return NextResponse.json(task);
+}
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
   const userId = await getUserId();
-  if (!userId)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
 
-  // Ensure task belongs to user
-  const existing = await prisma.task.findFirst({ where: { id, userId } });
-  if (!existing)
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const deleted = await prisma.task.deleteMany({ where: { id, userId } });
 
-  await prisma.task.delete({ where: { id } });
+  if (deleted.count === 0)
+    return NextResponse.json(
+      { error: "Not found or unauthorized" },
+      { status: 404 }
+    );
+
   return new NextResponse(null, { status: 204 });
 }

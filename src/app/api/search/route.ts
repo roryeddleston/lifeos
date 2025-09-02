@@ -1,9 +1,9 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
 
 export async function GET(req: Request) {
-  const userId = await getUserId();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -11,36 +11,60 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
 
+  // Require at least 2 characters to trigger search
   if (q.length < 2) {
-    // Short queries return empty buckets (cheap and predictable)
-    return NextResponse.json({ tasks: [], habits: [], goals: [] });
+    return NextResponse.json(
+      { tasks: [], habits: [], goals: [] },
+      { status: 200 }
+    );
   }
 
   try {
     const [tasks, habits, goals] = await Promise.all([
       prisma.task.findMany({
-        where: { userId, title: { contains: q, mode: "insensitive" } },
+        where: {
+          userId,
+          title: { contains: q, mode: "insensitive" },
+        },
         select: { id: true, title: true },
-        take: 8,
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
       }),
       prisma.habit.findMany({
-        where: { userId, name: { contains: q, mode: "insensitive" } },
-        select: { id: true, name: true },
-        take: 8,
+        where: {
+          userId,
+          name: { contains: q, mode: "insensitive" },
+        },
+        select: {
+          id: true,
+          name: true,
+          completions: {
+            select: {
+              date: true,
+              completed: true,
+            },
+          },
+        },
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
       }),
       prisma.goal.findMany({
-        where: { userId, title: { contains: q, mode: "insensitive" } },
+        where: {
+          userId,
+          title: { contains: q, mode: "insensitive" },
+        },
         select: { id: true, title: true },
-        take: 8,
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
       }),
     ]);
 
     return NextResponse.json({ tasks, habits, goals });
-  } catch (e) {
-    console.error("GET /api/search failed:", e);
+  } catch (err) {
+    console.error("Search error:", err);
     return NextResponse.json(
-      { error: "Search failed. Please try again." },
-      { status: 500 }
+      { tasks: [], habits: [], goals: [] },
+      { status: 200 }
     );
   }
 }

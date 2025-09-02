@@ -14,10 +14,8 @@ function MainColumn({ children }: PropsWithChildren) {
 
   return (
     <div className="flex-1 min-h-screen flex flex-col">
-      {/* Desktop topbar unchanged */}
       <div className="hidden md:block">
         <Topbar
-          // onOpenMenu no longer needed for mobile
           title={title}
           showSearch
           primaryActionHref={action?.href ?? "/tasks"}
