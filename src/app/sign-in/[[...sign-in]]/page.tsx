@@ -10,7 +10,7 @@ export default function SignInPage() {
           Welcome to Life OS
         </h1>
         <SignIn
-          afterSignInUrl="/"
+          fallbackRedirectUrl="/"
           appearance={{
             elements: {
               card: "shadow-none border-none",
