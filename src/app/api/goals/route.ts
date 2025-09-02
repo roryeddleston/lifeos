@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         targetValue: target,
         unit: String(unit).trim(),
         deadline: deadline ? new Date(deadline) : null,
-        userId, // ✅ Scope to the authenticated user
+        userId,
       },
     });
     return NextResponse.json(created, { status: 201 });
