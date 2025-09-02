@@ -40,7 +40,7 @@ function maxRun(arr: boolean[]) {
 
 export default async function HabitsPage() {
   const { userId } = await auth();
-  if (!userId) return null; // or redirect
+  if (!userId) return null;
 
   const today = startOfDayUTC();
   const start = addDays(today, -6);
@@ -52,7 +52,7 @@ export default async function HabitsPage() {
     select: {
       id: true,
       name: true,
-      records: {
+      completions: {
         where: { date: { gte: start, lt: end } },
         select: { date: true, completed: true },
       },
@@ -73,7 +73,7 @@ export default async function HabitsPage() {
 
   const view = habits.map((h) => {
     const map = new Map<string, boolean>();
-    for (const r of h.records) {
+    for (const r of h.completions) {
       map.set(toISODate(r.date), !!r.completed);
     }
 
@@ -116,7 +116,6 @@ export default async function HabitsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* This Week */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -152,7 +151,6 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Streaks */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Streaks</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -164,7 +162,6 @@ export default async function HabitsPage() {
           </div>
         </Card>
 
-        {/* Last 7 Days */}
         <Card className="p-4">
           <h3 className="text-sm font-medium">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
@@ -189,7 +186,6 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
-      {/* Habit list */}
       <Card className="p-0">
         <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
           <div
