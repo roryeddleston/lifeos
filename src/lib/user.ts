@@ -1,6 +1,8 @@
-// If you later add Clerk, you can import { auth } from "@clerk/nextjs";
-// and return auth().userId || "demo".
+// src/lib/user.ts
+import { auth } from "@clerk/nextjs/server";
+
 export async function getUserId(): Promise<string> {
-  // Demo fallback (no auth configured yet)
-  return "demo";
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+  return userId;
 }

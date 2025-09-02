@@ -1,7 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Shape of the fields we allow updating on a Goal
 type GoalUpdatePayload = Partial<{
   title: string;
   unit: string;
@@ -10,7 +10,6 @@ type GoalUpdatePayload = Partial<{
   currentValue: number;
 }>;
 
-// Shape of the incoming JSON (deadline arrives as string | null)
 type GoalUpdateBody = Partial<{
   title: string;
   unit: string;
@@ -22,11 +21,24 @@ type GoalUpdateBody = Partial<{
 // PATCH /api/goals/:id — partial update
 export async function PATCH(
   req: Request,
-  ctx: { params: Promise<{ id: string }> } // params can be async in Next 14/15
+  ctx: { params: Promise<{ id: string }> }
 ) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await ctx.params;
     const body = (await req.json()) as GoalUpdateBody;
+
+    const existing = await prisma.goal.findUnique({
+      where: { id },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     const data: GoalUpdatePayload = {};
 
@@ -58,7 +70,6 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      // Clamp to [0, targetValue] if target provided; else >= 0
       if (typeof data.targetValue === "number") {
         cv = Math.max(0, Math.min(cv, data.targetValue));
       } else {
@@ -87,8 +98,22 @@ export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await ctx.params;
+
+    const existing = await prisma.goal.findUnique({
+      where: { id },
+    });
+
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     await prisma.goal.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (e) {

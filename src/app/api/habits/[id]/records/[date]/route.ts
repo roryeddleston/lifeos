@@ -1,7 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Ensure a pure UTC date-only timestamp (00:00:00Z)
 function startOfDayUTC(d: Date) {
   return new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
@@ -12,34 +12,50 @@ type RouteParams = {
   params: Promise<{ id: string; date: string }>;
 };
 
+type RequestBody = { completed?: boolean };
+
 export async function POST(req: Request, { params }: RouteParams) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id, date } = await params;
 
-  // Expect :date as YYYY-MM-DD
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "Invalid date param" }, { status: 400 });
   }
 
-  // Construct UTC midnight for that calendar day
   const when = new Date(`${date}T00:00:00.000Z`);
   const dayUTC = startOfDayUTC(when);
 
-  // Optional body: { completed?: boolean }
-  let body: any = null;
+  let body: RequestBody | null = null;
   try {
     body = await req.json().catch(() => null);
   } catch {
     body = null;
   }
 
-  const hasExplicit = body && typeof body.completed === "boolean";
-  const explicit: boolean | null = hasExplicit ? Boolean(body.completed) : null;
+  const hasExplicit = typeof body?.completed === "boolean";
+  const explicit: boolean | null = hasExplicit
+    ? Boolean(body!.completed)
+    : null;
 
   try {
-    // Look up existing record for (habitId, date)
+    const habit = await prisma.habit.findFirst({
+      where: {
+        id,
+        userId,
+      },
+      select: { id: true },
+    });
+
+    if (!habit) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const existing = await prisma.habitRecord.findUnique({
       where: {
-        // IMPORTANT: use the correct compound unique key name
         habitId_date: {
           habitId: id,
           date: dayUTC,
@@ -47,10 +63,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
     });
 
-    // Decide the next value: toggle if not explicitly provided
     const nextCompleted = explicit ?? !Boolean(existing?.completed);
 
-    // Upsert to set the desired value
     const saved = await prisma.habitRecord.upsert({
       where: {
         habitId_date: {

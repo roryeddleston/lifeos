@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TaskStatus } from "@prisma/client";
+import { getUserId } from "@/lib/user";
 
 type IncomingTask = { title: string; dueDate?: string | null };
 
-// ---------- Type guards (no `any`) ----------
 function isRecord(u: unknown): u is Record<string, unknown> {
   return typeof u === "object" && u !== null;
 }
@@ -25,21 +25,11 @@ function isIncomingTaskArray(u: unknown): u is IncomingTask[] {
   );
 }
 
-// Normalize any allowed body into IncomingTask[]
 function normalizeToList(body: unknown): IncomingTask[] {
   if (!isRecord(body)) return [];
 
-  // 1) Single title
-  if (typeof body.title === "string") {
-    return [{ title: body.title }];
-  }
-
-  // 2) Array of titles
-  if (isStringArray(body.titles)) {
-    return body.titles.map((t) => ({ title: t }));
-  }
-
-  // 3) Multiline text block
+  if (typeof body.title === "string") return [{ title: body.title }];
+  if (isStringArray(body.titles)) return body.titles.map((t) => ({ title: t }));
   if (typeof body.text === "string") {
     return body.text
       .split(/\r?\n/)
@@ -47,8 +37,6 @@ function normalizeToList(body: unknown): IncomingTask[] {
       .filter(Boolean)
       .map((t) => ({ title: t }));
   }
-
-  // 4) Full task objects
   if (isIncomingTaskArray(body.tasks)) {
     return body.tasks.map((t) => ({
       title: t.title,
@@ -60,7 +48,8 @@ function normalizeToList(body: unknown): IncomingTask[] {
 }
 
 export async function POST(req: Request) {
-  // Read the body once as text; try JSON parse, else treat as plain text.
+  const userId = await getUserId();
+
   const bodyText = await req.text().catch(() => "");
   let parsed: unknown = null;
   try {
@@ -68,20 +57,20 @@ export async function POST(req: Request) {
   } catch {
     parsed = bodyText ? { text: bodyText } : null;
   }
+
   if (!parsed) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const incoming = normalizeToList(parsed);
 
-  // Trim + coerce to DB shape
   const toCreate = incoming
     .map(({ title, dueDate }) => ({
       title: (title ?? "").trim(),
       dueDate: dueDate ? new Date(dueDate) : null,
       status: TaskStatus.TODO,
       position: 0,
-      userId: null, // TODO: replace with real user scoping if you add auth
+      userId,
     }))
     .filter((t) => t.title.length > 0);
 
@@ -89,7 +78,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No valid tasks" }, { status: 400 });
   }
 
-  // Return created rows (createMany doesn't return rows)
   const created = await prisma.$transaction(
     toCreate.map((data) =>
       prisma.task.create({
@@ -101,7 +89,6 @@ export async function POST(req: Request) {
           dueDate: true,
           createdAt: true,
           position: true,
-          // completedAt stays null for TODO tasks (set when marking DONE)
         },
       })
     )

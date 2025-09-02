@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -20,9 +21,17 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const habit = await prisma.habit.findUnique({
-      where: { id: params.id },
+    const habit = await prisma.habit.findFirst({
+      where: {
+        id: params.id,
+        userId,
+      },
       select: {
         id: true,
         name: true,
@@ -37,7 +46,6 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Bucket by ISO week, compute completion %
     const buckets = new Map<string, { done: number; total: number }>();
     for (const r of habit.records) {
       const key = isoYearWeek(r.date);
@@ -51,7 +59,7 @@ export async function GET(
     const series = keys.map((k) => {
       const b = buckets.get(k)!;
       const pct = b.total ? b.done / b.total : 0;
-      return { week: k, pct }; // pct 0..1
+      return { week: k, pct };
     });
 
     return NextResponse.json({

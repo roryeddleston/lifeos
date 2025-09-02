@@ -182,7 +182,13 @@ export default function TasksTable({
   const hasAny = view === "all" ? (grouped?.length ?? 0) > 0 : items.length > 0;
 
   // Accent these section headers
-  const ACCENT_SECTIONS = new Set(["Overdue", "Today", "This Week", "No date"]);
+  const ACCENT_SECTIONS = new Set([
+    "Overdue",
+    "Today",
+    "This Week",
+    "Later",
+    "No date",
+  ]);
 
   const SectionHeaderRow = ({ label }: { label: string }) => {
     const isAccent = ACCENT_SECTIONS.has(label);

@@ -1,3 +1,5 @@
+// app/goals/page.tsx (or similar)
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import GoalsTabs from "@/components/goals/GoalsTabs";
 import QuickAddGoal from "@/components/goals/QuickAddGoal";
@@ -6,7 +8,13 @@ import { formatDueLabel } from "@/lib/date";
 export const dynamic = "force-dynamic";
 
 export default async function GoalsPage() {
+  const { userId } = await auth();
+  if (!userId) {
+    return null; // or redirect, or show a login prompt
+  }
+
   const goalsDb = await prisma.goal.findMany({
+    where: { userId }, // ✅ Scope to the user
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -17,11 +25,9 @@ export default async function GoalsPage() {
       unit: true,
       deadline: true,
       createdAt: true,
-      // userId not needed on this page render
     },
   });
 
-  // Serialize for client components where needed
   const goals = goalsDb.map((g) => ({
     ...g,
     deadline: g.deadline ? g.deadline.toISOString() : null,
@@ -59,7 +65,6 @@ export default async function GoalsPage() {
       </header>
 
       <GoalsTabs active={active} completed={completed} />
-
       <QuickAddGoal />
     </div>
   );

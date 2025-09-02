@@ -2,15 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/user";
 
+// GET /api/tasks — get tasks for current user
 export async function GET() {
   const userId = await getUserId();
+
   const tasks = await prisma.task.findMany({
     where: { userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   });
+
   return NextResponse.json(tasks);
 }
 
+// POST /api/tasks — create task
 export async function POST(req: Request) {
   const userId = await getUserId();
   const body = await req.json().catch(() => ({}));
@@ -33,5 +37,6 @@ export async function POST(req: Request) {
       userId,
     },
   });
+
   return NextResponse.json(created, { status: 201 });
 }

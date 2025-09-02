@@ -1,10 +1,17 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/goals — list goals
 export async function GET() {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const goals = await prisma.goal.findMany({
+      where: { userId },
       orderBy: { createdAt: "asc" },
     });
     return NextResponse.json(goals);
@@ -19,6 +26,11 @@ export async function GET() {
 
 // POST /api/goals — create goal
 export async function POST(req: Request) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { title, targetValue, unit, deadline } = body ?? {};
@@ -43,7 +55,7 @@ export async function POST(req: Request) {
         targetValue: target,
         unit: String(unit).trim(),
         deadline: deadline ? new Date(deadline) : null,
-        // currentValue defaults to 0 in schema
+        userId, // ✅ Scope to the authenticated user
       },
     });
     return NextResponse.json(created, { status: 201 });

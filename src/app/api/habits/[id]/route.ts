@@ -1,20 +1,14 @@
-// src/app/api/habits/[id]/route.ts
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
-/** Match your project’s pattern: params is a Promise and must be awaited */
 type RouteParams = { params: Promise<{ id: string }> };
 
-/* ---------------------- Validation Schemas ---------------------- */
-
 const PatchSchema = z.object({
-  // rename only (expand later as needed)
   name: z.string().trim().min(1, "Name is required").max(200).optional(),
 });
-
-/* --------------------------- Helpers --------------------------- */
 
 function jsonError(
   message: string,
@@ -31,13 +25,15 @@ function isPrismaNotFound(err: unknown): boolean {
 }
 
 /* ----------------------------- GET ----------------------------- */
-/** Fetch a single habit (minimal fields for UI) */
 export async function GET(_req: Request, { params }: RouteParams) {
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   try {
-    const habit = await prisma.habit.findUnique({
-      where: { id },
+    const habit = await prisma.habit.findFirst({
+      where: { id, userId },
       select: { id: true, name: true, createdAt: true },
     });
 
@@ -50,8 +46,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
 }
 
 /* ---------------------------- PATCH ---------------------------- */
-/** Update habit — currently supports rename via { name } */
 export async function PATCH(req: Request, { params }: RouteParams) {
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   let bodyUnknown: unknown;
@@ -77,7 +75,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
   try {
     const updated = await prisma.habit.update({
-      where: { id },
+      where: { id, userId },
       data,
       select: { id: true, name: true },
     });
@@ -92,16 +90,16 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 /* --------------------------- DELETE ---------------------------- */
-/**
- * Delete a habit.
- * Prisma schema uses `onDelete: Cascade` on HabitRecord → Habit,
- * so associated HabitRecord rows are removed automatically.
- */
 export async function DELETE(_req: Request, { params }: RouteParams) {
+  const { userId } = await auth();
+  if (!userId) return jsonError("Unauthorized", 401);
+
   const { id } = await params;
 
   try {
-    await prisma.habit.delete({ where: { id } });
+    await prisma.habit.delete({
+      where: { id, userId },
+    });
     return new NextResponse(null, { status: 204 });
   } catch (e: unknown) {
     if (isPrismaNotFound(e)) {

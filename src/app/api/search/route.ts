@@ -1,11 +1,17 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
 
-  // require at least 2 chars
+  // Require at least 2 characters to trigger search
   if (q.length < 2) {
     return NextResponse.json(
       { tasks: [], habits: [], goals: [] },
@@ -16,19 +22,28 @@ export async function GET(req: Request) {
   try {
     const [tasks, habits, goals] = await Promise.all([
       prisma.task.findMany({
-        where: { title: { contains: q, mode: "insensitive" } },
+        where: {
+          userId,
+          title: { contains: q, mode: "insensitive" },
+        },
         select: { id: true, title: true },
         orderBy: [{ createdAt: "desc" }],
         take: 5,
       }),
       prisma.habit.findMany({
-        where: { name: { contains: q, mode: "insensitive" } },
+        where: {
+          userId,
+          name: { contains: q, mode: "insensitive" },
+        },
         select: { id: true, name: true },
         orderBy: [{ createdAt: "desc" }],
         take: 5,
       }),
       prisma.goal.findMany({
-        where: { title: { contains: q, mode: "insensitive" } },
+        where: {
+          userId,
+          title: { contains: q, mode: "insensitive" },
+        },
         select: { id: true, title: true },
         orderBy: [{ createdAt: "desc" }],
         take: 5,

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
@@ -12,14 +13,17 @@ function startOfDayUTC(d = new Date()) {
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   );
 }
+
 function addDays(d: Date, n: number) {
   const copy = new Date(d);
   copy.setUTCDate(copy.getUTCDate() + n);
   return copy;
 }
+
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
+
 function maxRun(arr: boolean[]) {
   let best = 0,
     curr = 0;
@@ -35,11 +39,15 @@ function maxRun(arr: boolean[]) {
 }
 
 export default async function HabitsPage() {
+  const { userId } = await auth();
+  if (!userId) return null; // or redirect
+
   const today = startOfDayUTC();
   const start = addDays(today, -6);
   const end = addDays(today, 1);
 
   const habits = await prisma.habit.findMany({
+    where: { userId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -65,16 +73,21 @@ export default async function HabitsPage() {
 
   const view = habits.map((h) => {
     const map = new Map<string, boolean>();
-    for (const r of h.records) map.set(toISODate(r.date), !!r.completed);
+    for (const r of h.records) {
+      map.set(toISODate(r.date), !!r.completed);
+    }
+
     const timeline = days.map((d) => ({
       iso: d.iso,
       completed: map.get(d.iso) ?? false,
     }));
+
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
       else break;
     }
+
     return { id: h.id, name: h.name, timeline, streak };
   });
 
@@ -95,9 +108,6 @@ export default async function HabitsPage() {
   const perDayCounts = days.map((_, idx) =>
     view.reduce((sum, h) => sum + (h.timeline[idx]?.completed ? 1 : 0), 0)
   );
-  const chartHeight = 35;
-  const barWidth = 12;
-  const gap = 8;
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
@@ -163,9 +173,9 @@ export default async function HabitsPage() {
           <div className="mt-4">
             <SparkBars
               counts={perDayCounts}
-              height={chartHeight}
-              barWidth={barWidth}
-              gap={gap}
+              height={35}
+              barWidth={12}
+              gap={8}
             />
             <div
               className="mt-2 grid grid-cols-7 text-center text-xs"

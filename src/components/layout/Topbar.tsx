@@ -15,6 +15,7 @@ import Link from "next/link";
 import GlobalSearch from "./GlobalSearch";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { usePathname } from "next/navigation";
+import { SignedIn, UserButton } from "@clerk/nextjs";
 
 /* ---------- date (client-only to avoid hydration mismatch) ---------- */
 function formatShortGB(d = new Date()) {
@@ -116,13 +117,10 @@ function QuickAdd() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
-  // Close on route change
   useEffect(() => {
     if (open) setOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, open]);
 
-  // Close on outside click/tap
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -136,7 +134,6 @@ function QuickAdd() {
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -225,12 +222,11 @@ export default function Topbar(props: TopbarProps) {
       }}
     >
       <div className="mx-auto max-w-6xl w-full px-3 md:px-4">
-        {/* Row: search left, everything else right */}
         <div className="h-14 md:h-[60px] flex items-center justify-between gap-3">
           {/* LEFT: search */}
           <div className="min-w-0">{showSearch && <GlobalSearch />}</div>
 
-          {/* RIGHT: date+weather + actions */}
+          {/* RIGHT: date + weather + actions */}
           <div className="flex items-center gap-3">
             <div
               className="hidden md:flex items-center gap-3 text-sm"
@@ -251,10 +247,13 @@ export default function Topbar(props: TopbarProps) {
               <WeatherPill />
             </div>
 
-            {/* Actions */}
+            {/* Actions: Theme, QuickAdd, Avatar */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <QuickAdd />
+              <SignedIn>
+                <UserButton afterSignOutUrl="/sign-in" />
+              </SignedIn>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import Card from "@/components/cards/Card";
@@ -10,11 +11,13 @@ export const dynamic = "force-dynamic";
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
 type PageProps = {
-  // In App Router, searchParams is async now — treat it as a Promise and await.
   searchParams: Promise<{ view?: string }>;
 };
 
 export default async function TasksPage({ searchParams }: PageProps) {
+  const { userId } = await auth();
+  if (!userId) return null; // optionally redirect to sign-in page
+
   const { view: rawView } = await searchParams;
   const view = (rawView ?? "all").toLowerCase() as AllowedView;
 
@@ -29,7 +32,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
   // Base filter
   const where: Prisma.TaskWhereInput =
-    view === "done" ? { status: "DONE" } : { status: { not: "DONE" } };
+    view === "done"
+      ? { status: "DONE", userId }
+      : { status: { not: "DONE" }, userId };
 
   // View-specific filters
   if (view === "today") {
@@ -39,7 +44,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   } else if (view === "nodate") {
     where.dueDate = null;
   }
-  // 'all' => no extra dueDate filter
 
   const tasksDb = await prisma.task.findMany({
     where,
@@ -54,11 +58,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
       status: true,
       position: true,
     },
-    // Optional protective cap if you expect huge lists:
-    // take: 500,
   });
 
-  // Serialize for client components: dates -> "YYYY-MM-DD" | null
   const tasks = tasksDb.map((t) => ({
     ...t,
     dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : null,
