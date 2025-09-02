@@ -116,10 +116,14 @@ function QuickAdd() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
+  const prevPath = useRef(pathname);
 
   useEffect(() => {
-    if (open) setOpen(false);
-  }, [pathname, open]);
+    if (pathname !== prevPath.current) {
+      setOpen(false);
+      prevPath.current = pathname;
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
