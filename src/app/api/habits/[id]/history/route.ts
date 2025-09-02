@@ -3,18 +3,23 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/habits/[id]/history
-export async function GET(req: Request, context: { params: { id: string } }) {
+export async function GET(req: Request) {
   const { userId } = await auth();
-  const habitId = context.params.id;
-
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").filter(Boolean).pop();
+
+  if (!id) {
+    return NextResponse.json({ error: "Missing habit ID" }, { status: 400 });
   }
 
   try {
     const habit = await prisma.habit.findFirst({
       where: {
-        id: habitId,
+        id,
         userId,
       },
       select: {
