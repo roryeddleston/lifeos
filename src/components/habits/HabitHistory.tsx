@@ -1,24 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Card from "@/components/cards/Card";
 
-type WeeklyPoint = { week: string; pct: number }; // pct in 0..1
+type WeeklyPoint = {
+  week: string;
+  pct: number;
+};
+
 type HistoryPayload = {
   id: string;
   name: string;
-  series: WeeklyPoint[]; // ascending by week
+  series: WeeklyPoint[];
   countWeeks: number;
 };
-
-// ISO week key like "2025-W09"
-function isoWeekKey(d = new Date()): string {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
-  const weekStr = String(weekNo).padStart(2, "0");
-  return `${date.getUTCFullYear()}-W${weekStr}`;
-}
 
 export default function HabitHistory({ id }: { id: string }) {
   const [data, setData] = useState<HistoryPayload | null>(null);
@@ -54,22 +49,18 @@ export default function HabitHistory({ id }: { id: string }) {
     };
   }, [id]);
 
-  // Memoize series to keep a stable reference and satisfy exhaustive-deps
-  const series = useMemo<WeeklyPoint[]>(() => data?.series ?? [], [data]);
-  const n = series.length;
+  const realSeries = useMemo(() => data?.series ?? [], [data]);
+  const n = realSeries.length;
 
-  // chart sizing
   const H = 128;
   const PL = 38;
   const PR = 16;
   const PT = 26;
   const PB = 26;
-  const innerH = H - PT - PB;
-
   const step = 18;
   const W = Math.max(360, PL + PR + Math.max(0, n - 1) * step);
 
-  const y = useCallback((pct: number) => PT + (1 - pct) * innerH, [innerH]);
+  const y = useCallback((pct: number) => PT + (1 - pct) * (H - PT - PB), []);
 
   const xs = useMemo(() => {
     if (n <= 1) return [PL];
@@ -77,44 +68,26 @@ export default function HabitHistory({ id }: { id: string }) {
       { length: n },
       (_, i) => PL + i * ((W - PL - PR) / (n - 1))
     );
-  }, [n, W, PL, PR]);
+  }, [n, W]);
 
   const path = useMemo(() => {
-    if (n === 0) return "";
-    const parts: string[] = [];
-    series.forEach((pt, i) => {
-      const xi = xs[i];
-      const yi = y(pt.pct);
-      parts.push(i === 0 ? `M ${xi} ${yi}` : `L ${xi} ${yi}`);
-    });
-    return parts.join(" ");
-  }, [series, xs, y, n]);
+    return realSeries
+      .map((pt, i) => {
+        const xi = xs[i];
+        const yi = y(pt.pct);
+        return i === 0 ? `M ${xi} ${yi}` : `L ${xi} ${yi}`;
+      })
+      .join(" ");
+  }, [realSeries, xs, y]);
 
-  const currentKey = isoWeekKey();
-  const lastIdx = n >= 2 && series[n - 1].week === currentKey ? n - 2 : n - 1;
-
-  const lastWeekPct = lastIdx >= 0 ? Math.round(series[lastIdx].pct * 100) : 0;
-  const windowCount = Math.min(8, n);
-  const avgPct =
-    windowCount > 0
-      ? Math.round(
-          (series.slice(n - windowCount).reduce((s, p) => s + p.pct, 0) /
-            windowCount) *
-            100
-        )
-      : 0;
-  const bestWeekPct = n
-    ? Math.round(Math.max(...series.map((p) => p.pct)) * 100)
-    : 0;
-
+  // === UI States ===
   if (loading) {
     return (
       <div
-        className="rounded-md px-2 py-1.5 text-[11px]"
+        className="text-[11px] px-2 py-1.5 rounded-md"
         style={{
           border: "1px solid var(--twc-border)",
-          backgroundColor:
-            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          background: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
           color: "var(--twc-muted)",
         }}
       >
@@ -122,14 +95,14 @@ export default function HabitHistory({ id }: { id: string }) {
       </div>
     );
   }
+
   if (err) {
     return (
       <div
-        className="rounded-md px-2 py-1.5 text-[11px]"
+        className="text-[11px] px-2 py-1.5 rounded-md"
         style={{
           border: "1px solid var(--twc-border)",
-          backgroundColor:
-            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          background: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
           color: "var(--twc-danger)",
         }}
       >
@@ -137,22 +110,58 @@ export default function HabitHistory({ id }: { id: string }) {
       </div>
     );
   }
-  if (!n) {
+
+  if (n === 0) {
     return (
       <div
-        className="rounded-md px-2 py-1.5 text-[11px]"
+        className="text-[11px] px-2 py-1.5 rounded-md"
         style={{
           border: "1px solid var(--twc-border)",
-          backgroundColor:
-            "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
+          background: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
           color: "var(--twc-muted)",
         }}
       >
-        No history yet.
+        No history yet. Start checking off habits to build your streak.
       </div>
     );
   }
 
+  if (n < 4) {
+    return (
+      <Card
+        title="Habit history"
+        subtitle="Track your habit over time"
+        className="border"
+      >
+        <div className="p-4 md:p-6 text-sm text-muted">
+          <p className="mb-2 font-medium text-center">
+            Not enough data just yet
+          </p>
+          <p className="text-center text-[13px] leading-snug">
+            Once you’ve logged at least 4 weeks of completions, your habit
+            history will be shown here.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+  const lastWeekPct =
+    n >= 2
+      ? Math.round(realSeries[n - 2].pct * 100)
+      : Math.round(realSeries[n - 1].pct * 100);
+  const avgPct =
+    n > 0
+      ? Math.round(
+          (realSeries.slice(-8).reduce((sum, pt) => sum + pt.pct, 0) /
+            Math.min(8, n)) *
+            100
+        )
+      : 0;
+  const bestWeekPct = Math.round(
+    Math.max(...realSeries.map((pt) => pt.pct)) * 100
+  );
+
+  // === Chart Rendering ===
   return (
     <div
       className="rounded-md px-3 py-4"
@@ -161,7 +170,7 @@ export default function HabitHistory({ id }: { id: string }) {
         backgroundColor: "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
       }}
     >
-      {/* header */}
+      {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <div
           className="text-[11px] font-medium"
@@ -170,11 +179,11 @@ export default function HabitHistory({ id }: { id: string }) {
           History
         </div>
         <div className="text-[10px]" style={{ color: "var(--twc-muted)" }}>
-          {n} {n === 1 ? "week" : "weeks"}
+          {n} weeks
         </div>
       </div>
 
-      {/* stats row */}
+      {/* Stats */}
       <div className="mb-4 grid grid-cols-3 gap-2">
         <div
           className="rounded-[8px] px-2 py-1.5"
@@ -220,7 +229,7 @@ export default function HabitHistory({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* legend */}
+      {/* Legend */}
       <div className="mb-2 flex items-center gap-2">
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
@@ -231,7 +240,7 @@ export default function HabitHistory({ id }: { id: string }) {
         </span>
       </div>
 
-      {/* chart */}
+      {/* Chart */}
       <div className="flex justify-center py-2">
         <svg
           viewBox={`0 0 ${W} ${H}`}
@@ -266,16 +275,6 @@ export default function HabitHistory({ id }: { id: string }) {
               </g>
             );
           })}
-
-          <line
-            x1={PL}
-            y1={y(0)}
-            x2={W - PR}
-            y2={y(0)}
-            stroke="var(--twc-border)"
-            strokeWidth="1"
-          />
-
           <path
             d={path}
             fill="none"
@@ -284,8 +283,7 @@ export default function HabitHistory({ id }: { id: string }) {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-
-          {series.map((pt, i) => (
+          {realSeries.map((pt, i) => (
             <circle
               key={pt.week + i}
               cx={xs[i]}
