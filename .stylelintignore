@@ -2,3 +2,5 @@
 **/*.tsx
 **/*.js
 **/*.jsx
+node_modules
+.next
