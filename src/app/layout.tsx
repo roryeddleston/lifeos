@@ -5,7 +5,13 @@ import { montserrat } from "@/styles/fonts";
 import { ToastProvider } from "@/components/ui/Toaster";
 import ThemeProvider from "@/components/theme/ThemeProvider";
 
-import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  ClerkLoaded,
+  ClerkLoading,
+} from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: "Life OS",
@@ -26,13 +32,19 @@ export default function RootLayout({
         >
           <ThemeProvider>
             <ToastProvider>
-              {/* Header for signed-in users only */}
-              <SignedIn>
-                <AppShell>{children}</AppShell>
-              </SignedIn>
+              <ClerkLoaded>
+                <SignedIn>
+                  <AppShell>{children}</AppShell>
+                </SignedIn>
+                <SignedOut>{children}</SignedOut>
+              </ClerkLoaded>
 
-              {/* Signed-out fallback – show children like the /sign-in page */}
-              <SignedOut>{children}</SignedOut>
+              {/* Optional: Show a loading spinner while Clerk is initializing */}
+              <ClerkLoading>
+                <div className="flex justify-center items-center min-h-screen">
+                  <p>Loading...</p>
+                </div>
+              </ClerkLoading>
             </ToastProvider>
           </ThemeProvider>
         </body>
