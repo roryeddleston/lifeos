@@ -54,7 +54,7 @@ export default async function Home() {
       select: {
         id: true,
         name: true,
-        records: {
+        completions: {
           where: {
             date: { gte: since, lte: today },
             completed: true,
@@ -88,7 +88,7 @@ export default async function Home() {
 
   const streaks = habits.map((h) => {
     const completedSet = new Set(
-      h.records.map((r) => r.date.toISOString().slice(0, 10))
+      h.completions.map((r) => r.date.toISOString().slice(0, 10))
     );
     return {
       id: h.id,
@@ -98,7 +98,7 @@ export default async function Home() {
   });
 
   const habitsCompletedToday = habits.reduce((sum, h) => {
-    const hasToday = h.records.some(
+    const hasToday = h.completions.some(
       (r) => r.date.toISOString().slice(0, 10) === todayISO
     );
     return sum + (hasToday ? 1 : 0);
