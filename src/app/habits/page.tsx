@@ -197,15 +197,15 @@ export default async function HabitsPage() {
       </div>
 
       <Card className="p-0">
-        <div className="px-4 pt-4 pb-2 grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-end gap-4">
+        <div className="px-4 pt-4 pb-2 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto_2rem] items-start sm:items-end gap-2 sm:gap-4">
           <div
             className="text-xs font-medium"
             style={{ color: "var(--twc-muted)" }}
           >
             Habits
           </div>
-          <div className="w-[17rem]">
-            <div className="grid grid-cols-7 gap-2">
+          <div className="overflow-auto">
+            <div className="min-w-[14rem] grid grid-cols-7 gap-2">
               {days.map((d) => (
                 <div
                   key={d.iso}

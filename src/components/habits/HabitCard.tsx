@@ -120,8 +120,8 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
 
   return (
     <div className="space-y-2">
-      {/* 3-column grid (name / 7-day strip / delete) */}
-      <div className="grid grid-cols-[minmax(0,1fr)_17rem_2rem] items-center gap-4">
+      {/* Responsive layout (name / checkboxes + trash) */}
+      <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto] items-start md:items-center gap-2 md:gap-4">
         {/* Left: name + streak + history toggle */}
         <div className="min-w-0 flex items-center gap-2">
           <InlineHabitName id={habit.id} name={habit.name} />
@@ -161,9 +161,9 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           </button>
         </div>
 
-        {/* Middle: 7-day strip */}
-        <div className="w-[17rem] shrink-0">
-          <div className="grid grid-cols-7 gap-2">
+        {/* Right: checkboxes and trash icon */}
+        <div className="overflow-auto py-3 md:py-0">
+          <div className="min-w-[16rem] grid grid-cols-8 gap-2">
             {tiles.map((d) => {
               const active = d.completed;
               const isToday = d.iso === todayIso;
@@ -216,17 +216,17 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                 </button>
               );
             })}
-          </div>
-        </div>
 
-        {/* Right: delete */}
-        <div className="w-8 flex items-center justify-center">
-          <TrashButton
-            onClick={handleDelete}
-            disabled={deleting}
-            aria-label="Delete habit"
-            title="Delete habit"
-          />
+            {/* Trash icon as last column */}
+            <div className="w-8 flex items-center justify-center">
+              <TrashButton
+                onClick={handleDelete}
+                disabled={deleting}
+                aria-label="Delete habit"
+                title="Delete habit"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
