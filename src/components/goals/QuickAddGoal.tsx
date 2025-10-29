@@ -1,4 +1,3 @@
-// src/components/goals/QuickAddGoal.tsx
 "use client";
 
 import { useState, useTransition } from "react";

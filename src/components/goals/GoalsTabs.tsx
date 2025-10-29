@@ -1,4 +1,3 @@
-// src/components/goals/GoalsTabs.tsx
 "use client";
 
 import { useState } from "react";

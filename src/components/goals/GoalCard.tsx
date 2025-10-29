@@ -1,4 +1,3 @@
-// src/components/goals/GoalCard.tsx
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
