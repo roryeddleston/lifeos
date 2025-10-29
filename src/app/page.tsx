@@ -1,9 +1,9 @@
 // src/app/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import { Suspense } from "react";
-import StatCardsServer from "@/components/dashboard/StatCardsServer";
-import HabitStreakBarsServer from "@/components/dashboard/HabitStreakBarsServer";
-import RecentlyCompletedServer from "@/components/dashboard/RecentlyCompletedServer";
+import StatCardsServer from "../components/dashboard/StatCardsServer";
+import HabitStreakBarsServer from "../components/dashboard/HabitStreakBarsServer";
+import RecentlyCompletedServer from "../components/dashboard/RecentlyCompletedServer";
 
 export const dynamic = "force-dynamic";
 
