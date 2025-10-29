@@ -1,3 +1,4 @@
+// src/components/goals/GoalCard.tsx
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -7,6 +8,7 @@ import { useToast } from "@/components/ui/Toaster";
 import InlineGoalTitle from "./InlineGoalTitle";
 import { formatDateGB, formatDueLabel } from "@/lib/date";
 import TrashButton from "@/components/ui/TrashButton";
+import { updateGoal, deleteGoal } from "@/app/goals/actions";
 
 type Goal = {
   id: string;
@@ -48,7 +50,6 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     }
   }, [customOpen]);
 
-  // ❗️Close custom panel if clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -56,76 +57,60 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         setCustomAmount("");
       }
     }
-
-    if (customOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (customOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [customOpen]);
 
-  const pct = Math.max(
-    0,
-    Math.min(100, Math.round((local.currentValue / local.targetValue) * 100))
-  );
-
-  async function patch(data: Partial<Goal>) {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/goals/${local.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("PATCH /api/goals/:id failed:", res.status, txt);
-        toast({ variant: "error", title: "Update failed" });
-        return;
-      }
-      const updated = await res.json();
-      setLocal(updated);
-      startTransition(() => router.refresh());
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "error", title: "Network error" });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const step = 1;
+  const pct =
+    local.targetValue > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round((local.currentValue / local.targetValue) * 100)
+          )
+        )
+      : 0;
 
   function clampToRange(v: number) {
     return Math.max(0, Math.min(local.targetValue, v));
   }
 
-  function adjust(delta: number) {
-    const next = clampToRange(local.currentValue + delta);
-    setLocal((c) => ({ ...c, currentValue: next }));
-    patch({ currentValue: next });
+  function mutate(patch: Partial<Goal>) {
+    setBusy(true);
+    // optimistic
+    setLocal((c) => ({ ...c, ...patch }));
+    startTransition(async () => {
+      try {
+        await updateGoal(local.id, {
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.description !== undefined
+            ? { description: patch.description }
+            : {}),
+          ...(patch.targetValue !== undefined
+            ? { targetValue: Number(patch.targetValue) }
+            : {}),
+          ...(patch.currentValue !== undefined
+            ? { currentValue: Number(patch.currentValue) }
+            : {}),
+          ...(patch.unit !== undefined ? { unit: patch.unit } : {}),
+          ...(patch.deadline !== undefined ? { deadline: patch.deadline } : {}),
+        });
+        router.refresh();
+      } catch (e) {
+        toast({ variant: "error", title: "Update failed" });
+        setLocal(goal); // rollback simple
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
-  async function handleDelete() {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/goals/${local.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        console.error("DELETE /api/goals/:id failed:", res.status, t);
-        toast({ variant: "error", title: "Delete failed" });
-        return;
-      }
-      startTransition(() => router.refresh());
-      toast({ variant: "success", title: "Goal deleted" });
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "error", title: "Network error" });
-    } finally {
-      setBusy(false);
-    }
+  const step = 1;
+
+  function adjust(delta: number) {
+    const next = clampToRange(local.currentValue + delta);
+    mutate({ currentValue: next });
   }
 
   function applyCustom() {
@@ -135,10 +120,24 @@ export default function GoalCard({ goal }: { goal: Goal }) {
       return;
     }
     const next = clampToRange(local.currentValue + n);
-    setLocal((c) => ({ ...c, currentValue: next }));
-    patch({ currentValue: next });
+    mutate({ currentValue: next });
     setCustomAmount("");
     setCustomOpen(false);
+  }
+
+  function onDelete() {
+    setBusy(true);
+    startTransition(async () => {
+      try {
+        await deleteGoal(local.id);
+        router.refresh();
+        toast({ variant: "success", title: "Goal deleted" });
+      } catch {
+        toast({ variant: "error", title: "Delete failed" });
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   const btnBase =
@@ -156,8 +155,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     : "width 2000ms cubic-bezier(0.22, 1, 0.36, 1)";
 
   return (
-    <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-      {/* Left */}
+    <div className="flex flex-col gap-4 md:grid md:grid-cols:[minmax(0,1fr)_auto] md:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <InlineGoalTitle
@@ -183,9 +181,8 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           )}
         </div>
 
-        {/* Progress bar */}
         <div
-          className="mt-2 w-full h-2 rounded-full"
+          className="mt-2 h-2 w-full rounded-full"
           style={{
             backgroundColor:
               "color-mix(in oklab, var(--twc-text) 6%, var(--twc-surface))",
@@ -206,11 +203,10 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           />
         </div>
 
-        {/* Custom Panel */}
         {customOpen && (
           <div
             ref={panelRef}
-            className="mt-3 inline-flex flex-wrap items-center gap-2 md:gap-4 rounded-lg p-2"
+            className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg p-2 md:gap-4"
             style={{
               border: "1px solid var(--twc-border)",
               backgroundColor:
@@ -244,19 +240,19 @@ export default function GoalCard({ goal }: { goal: Goal }) {
               type="button"
               onClick={applyCustom}
               disabled={customAmount.trim() === "" || Number(customAmount) <= 0}
-              className={`inline-flex items-center gap-2 rounded-md px-3 text-sm text-white transition active:scale-[0.98] h-8 ${
+              className={`inline-flex h-8 items-center gap-2 rounded-md px-3 text-sm text-white transition active:scale-[0.98] ${
                 customAmount.trim() !== "" && Number(customAmount) > 0
                   ? "bg-[var(--twc-accent)] cursor-pointer"
                   : "bg-[var(--twc-accent)] opacity-50 cursor-not-allowed"
               }`}
             >
-              <Check className="w-4 h-4" />
+              <Check className="h-4 w-4" />
               Save
             </button>
 
             <button
               type="button"
-              className={`${btnBase} px-3 h-8`}
+              className={`${btnBase} h-8 px-3`}
               style={boxStyle}
               onClick={() => {
                 setCustomAmount("");
@@ -270,24 +266,27 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         )}
       </div>
 
-      {/* Right controls */}
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => adjust(-step)}
+          onClick={() => adjust(-1)}
           disabled={busy || isPending}
           className={`${btnBase} h-8 w-8`}
           style={boxStyle}
+          aria-label="Decrement"
+          title="Decrement"
         >
           <Minus className="h-4 w-4" />
         </button>
 
         <button
           type="button"
-          onClick={() => adjust(+step)}
+          onClick={() => adjust(+1)}
           disabled={busy || isPending}
           className={`${btnBase} h-8 w-8`}
           style={boxStyle}
+          aria-label="Increment"
+          title="Increment"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -295,7 +294,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         <button
           type="button"
           onClick={() => setCustomOpen(true)}
-          className={`${btnBase} w-auto px-2 gap-1 h-8`}
+          className={`${btnBase} h-8 w-auto gap-1 px-2`}
           style={boxStyle}
           aria-expanded={customOpen}
           title="Custom adjust"
@@ -305,7 +304,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
         </button>
 
         <TrashButton
-          onClick={handleDelete}
+          onClick={onDelete}
           disabled={busy || isPending}
           aria-label="Delete goal"
           title="Delete goal"

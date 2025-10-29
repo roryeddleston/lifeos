@@ -1,3 +1,4 @@
+// src/components/goals/QuickAddGoal.tsx
 "use client";
 
 import { useState, useTransition } from "react";
@@ -5,24 +6,7 @@ import Card from "@/components/cards/Card";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
-
-function loginRedirect() {
-  if (typeof window !== "undefined") {
-    const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
-      returnTo
-    )}`;
-  }
-}
-
-async function apiFetch(input: RequestInfo, init?: RequestInit) {
-  const res = await fetch(input, init);
-  if (res.status === 401) {
-    loginRedirect();
-    throw new Error("Unauthorized");
-  }
-  return res;
-}
+import { createGoal } from "@/app/goals/actions";
 
 export default function QuickAddGoal() {
   const router = useRouter();
@@ -40,7 +24,7 @@ export default function QuickAddGoal() {
     targetValue !== "" &&
     Number(targetValue) > 0;
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid) return;
 
@@ -52,31 +36,19 @@ export default function QuickAddGoal() {
       deadline: deadline || null,
     };
 
-    try {
-      const res = await apiFetch("/api/goals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("POST /api/goals failed:", res.status, text);
+    startTransition(async () => {
+      try {
+        await createGoal(payload);
+        setTitle("");
+        setTargetValue("");
+        setUnit("");
+        setDeadline("");
+        router.refresh();
+        toast({ variant: "success", title: "Goal added" });
+      } catch (e) {
         toast({ variant: "error", title: "Add goal failed" });
-        return;
       }
-      setTitle("");
-      setTargetValue("");
-      setUnit("");
-      setDeadline("");
-
-      startTransition(() => router.refresh());
-      toast({ variant: "success", title: "Goal added" });
-    } catch (e) {
-      if ((e as Error).message !== "Unauthorized") {
-        console.error(e);
-        toast({ variant: "error", title: "Network error" });
-      }
-    }
+    });
   }
 
   const inputBase =

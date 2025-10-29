@@ -1,3 +1,4 @@
+// src/components/goals/GoalsTabs.tsx
 "use client";
 
 import { useState } from "react";
@@ -79,8 +80,7 @@ export default function GoalsTabs({
 
   return (
     <Card className="border-0 !shadow-none">
-      {/* Tabs header */}
-      <div className="px-4 pt-2 pb-3 flex items-center gap-2">
+      <div className="flex items-center gap-2 px-4 pt-2 pb-3">
         <TabButton value="active" label="Active" count={active.length} />
         <TabButton
           value="completed"
@@ -89,7 +89,6 @@ export default function GoalsTabs({
         />
       </div>
 
-      {/* List */}
       {list.length === 0 ? (
         <div className="px-4 py-14">
           <div

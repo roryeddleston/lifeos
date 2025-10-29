@@ -1,12 +1,14 @@
+// src/components/goals/InlineGoalTitle.tsx
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
+import { updateGoal } from "@/app/goals/actions";
 
 function capitalizeFirst(s: string) {
   if (!s) return s;
-  return s[0].toUpperCase() + s.slice(1);
+  return s[0] + s.slice(1);
 }
 
 export default function InlineGoalTitle({
@@ -24,37 +26,26 @@ export default function InlineGoalTitle({
   const router = useRouter();
   const toast = useToast();
 
-  async function save(next: string) {
+  function save(next: string) {
     const trimmed = next.trim();
     if (!trimmed || trimmed === title) {
       setEditing(false);
       setValue(title);
       return;
     }
-    try {
-      const res = await fetch(`/api/goals/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmed }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("PATCH /api/goals/:id failed:", res.status, text);
+    startTransition(async () => {
+      try {
+        await updateGoal(id, { title: trimmed });
+        onSaved?.(trimmed);
+        router.refresh();
+        toast({ variant: "success", title: "Goal updated" });
+      } catch {
         toast({ variant: "error", title: "Rename failed" });
         setValue(title);
+      } finally {
         setEditing(false);
-        return;
       }
-      startTransition(() => router.refresh());
-      onSaved?.(trimmed);
-      toast({ variant: "success", title: "Goal updated" });
-      setEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast({ variant: "error", title: "Network error" });
-      setValue(title);
-      setEditing(false);
-    }
+    });
   }
 
   if (editing) {
