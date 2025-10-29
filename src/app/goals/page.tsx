@@ -13,7 +13,7 @@ export default async function GoalsPage() {
   }
 
   const goalsDb = await prisma.goal.findMany({
-    where: { userId }, // ✅ Scope to the user
+    where: { userId },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
