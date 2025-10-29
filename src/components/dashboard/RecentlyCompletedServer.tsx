@@ -2,6 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import Card from "@/components/cards/Card";
+import { formatDateGB } from "@/lib/date";
 
 export default async function RecentlyCompletedServer() {
   const { userId } = await auth();
@@ -16,12 +17,13 @@ export default async function RecentlyCompletedServer() {
 
   return (
     <Card className="p-4">
-      <div
+      <h3
         className="mb-3 text-sm font-medium"
         style={{ color: "var(--twc-text)" }}
       >
-        Recently Completed Tasks
-      </div>
+        Recently completed tasks
+      </h3>
+
       {tasks.length === 0 ? (
         <div className="text-sm" style={{ color: "var(--twc-muted)" }}>
           Nothing completed yet.
@@ -30,15 +32,20 @@ export default async function RecentlyCompletedServer() {
         <ul className="divide-y" style={{ borderColor: "var(--twc-border)" }}>
           {tasks.map((t) => (
             <li key={t.id} className="py-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <span className="truncate" style={{ color: "var(--twc-text)" }}>
                   {t.title}
                 </span>
                 <span
-                  className="ml-3 shrink-0 text-xs tabular-nums"
+                  className="shrink-0 text-xs tabular-nums"
                   style={{ color: "var(--twc-muted)" }}
+                  title={
+                    t.completedAt ? new Date(t.completedAt).toISOString() : ""
+                  }
                 >
-                  {t.completedAt?.toISOString().slice(0, 16).replace("T", " ")}
+                  {t.completedAt
+                    ? formatDateGB(new Date(t.completedAt).toISOString())
+                    : ""}
                 </span>
               </div>
             </li>
