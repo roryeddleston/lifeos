@@ -1,8 +1,10 @@
+// src/components/habits/InlineHabitName.tsx
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
+import { updateHabit } from "@/app/habits/actions";
 
 export default function InlineHabitName({
   id,
@@ -17,36 +19,25 @@ export default function InlineHabitName({
   const router = useRouter();
   const toast = useToast();
 
-  async function save(next: string) {
+  function save(next: string) {
     const trimmed = next.trim();
     if (!trimmed || trimmed === name) {
       setEditing(false);
       setValue(name);
       return;
     }
-    try {
-      const res = await fetch(`/api/habits/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("PATCH /api/habits/:id failed:", res.status, text);
+    startTransition(async () => {
+      try {
+        await updateHabit(id, { name: trimmed });
+        router.refresh();
+        toast({ variant: "success", title: "Habit updated" });
+      } catch (e) {
         toast({ variant: "error", title: "Rename failed" });
         setValue(name);
+      } finally {
         setEditing(false);
-        return;
       }
-      startTransition(() => router.refresh());
-      toast({ variant: "success", title: "Habit updated" });
-      setEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast({ variant: "error", title: "Network error" });
-      setValue(name);
-      setEditing(false);
-    }
+    });
   }
 
   const base = "truncate text-left text-sm [&::first-letter]:uppercase";

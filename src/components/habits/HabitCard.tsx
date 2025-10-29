@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toaster";
 import InlineHabitName from "./InlineHabitName";
 import HabitHistory from "./HabitHistory";
 import TrashButton from "@/components/ui/TrashButton";
+import { toggleHabitRecord, deleteHabit } from "@/app/habits/actions";
 
 type HabitView = {
   id: string;
@@ -14,24 +15,6 @@ type HabitView = {
   timeline: { iso: string; completed: boolean }[]; // last 7 days
   streak: number;
 };
-
-function loginRedirect() {
-  if (typeof window !== "undefined") {
-    const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
-      returnTo
-    )}`;
-  }
-}
-
-async function apiFetch(input: RequestInfo, init?: RequestInit) {
-  const res = await fetch(input, init);
-  if (res.status === 401) {
-    loginRedirect();
-    throw new Error("Unauthorized");
-  }
-  return res;
-}
 
 export default function HabitCard({ habit }: { habit: HabitView }) {
   const router = useRouter();
@@ -43,86 +26,51 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
 
   const todayIso = tiles[tiles.length - 1]?.iso;
 
-  async function toggleDay(iso: string, next: boolean) {
+  function toggleDay(iso: string, next: boolean) {
+    // optimistic update
     setTiles((curr) =>
       curr.map((d) => (d.iso === iso ? { ...d, completed: next } : d))
     );
-    try {
-      const res = await apiFetch(`/api/habits/${habit.id}/records/${iso}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: next }),
-      });
-      if (!res.ok) {
+    startTransition(async () => {
+      try {
+        await toggleHabitRecord({ habitId: habit.id, iso, completed: next });
+        router.refresh();
+      } catch (e) {
+        // rollback
         setTiles((curr) =>
           curr.map((d) => (d.iso === iso ? { ...d, completed: !next } : d))
-        );
-        const text = await res.text().catch(() => "");
-        console.error(
-          "POST /api/habits/:id/records/:date failed:",
-          res.status,
-          text
         );
         toast({
           variant: "error",
           title: "Update failed",
-          description: `HTTP ${res.status}`,
-        });
-        return;
-      }
-      startTransition(() => router.refresh());
-    } catch (e) {
-      if ((e as Error).message !== "Unauthorized") {
-        console.error(e);
-        setTiles((curr) =>
-          curr.map((d) => (d.iso === iso ? { ...d, completed: !next } : d))
-        );
-        toast({
-          variant: "error",
-          title: "Network error",
           description: "Please try again.",
         });
       }
-    }
+    });
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     setDeleting(true);
-    try {
-      const res = await apiFetch(`/api/habits/${habit.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        console.error("DELETE /api/habits/:id failed:", res.status, text);
+    startTransition(async () => {
+      try {
+        await deleteHabit(habit.id);
+        router.refresh();
+        toast({ variant: "success", title: "Habit deleted" });
+      } catch (e) {
         toast({
           variant: "error",
           title: "Delete failed",
-          description: `HTTP ${res.status}`,
-        });
-        return;
-      }
-      router.refresh();
-      toast({ variant: "success", title: "Habit deleted" });
-    } catch (e) {
-      if ((e as Error).message !== "Unauthorized") {
-        console.error(e);
-        toast({
-          variant: "error",
-          title: "Network error",
           description: "Please try again.",
         });
+      } finally {
+        setDeleting(false);
       }
-    } finally {
-      setDeleting(false);
-    }
+    });
   }
 
   return (
     <div className="space-y-2">
-      {/* Responsive layout (name / checkboxes + trash) */}
-      <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto] items-start md:items-center gap-2 md:gap-4">
-        {/* Left: name + streak + history toggle */}
+      <div className="flex flex-col items-start gap-2 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4">
         <div className="min-w-0 flex items-center gap-2">
           <InlineHabitName id={habit.id} name={habit.name} />
 
@@ -144,7 +92,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
+            className="ml-1 inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
             title="Show history"
             style={{
               border: "1px solid var(--twc-border)",
@@ -161,9 +109,8 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           </button>
         </div>
 
-        {/* Right: checkboxes and trash icon */}
         <div className="overflow-auto py-3 md:py-0">
-          <div className="min-w-[16rem] grid grid-cols-8 gap-2">
+          <div className="grid min-w-[16rem] grid-cols-8 gap-2">
             {tiles.map((d) => {
               const active = d.completed;
               const isToday = d.iso === todayIso;
@@ -172,7 +119,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                   key={d.iso}
                   type="button"
                   onClick={() => toggleDay(d.iso, !d.completed)}
-                  className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
+                  className="group relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition outline-none focus-visible:ring-2"
                   style={{
                     border: `1px solid ${
                       active
@@ -200,7 +147,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
                     />
                   ) : (
                     <span
-                      className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-1.5 w-1.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
                       style={{ backgroundColor: "var(--twc-border)" }}
                     />
                   )}
@@ -217,8 +164,7 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
               );
             })}
 
-            {/* Trash icon as last column */}
-            <div className="w-8 flex items-center justify-center">
+            <div className="flex w-8 items-center justify-center">
               <TrashButton
                 onClick={handleDelete}
                 disabled={deleting}
@@ -230,7 +176,6 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
         </div>
       </div>
 
-      {/* Collapsible history */}
       {showHistory && (
         <div className="px-0">
           <HabitHistory id={habit.id} />

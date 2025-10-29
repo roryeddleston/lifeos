@@ -1,5 +1,4 @@
-"use client";
-
+// src/components/habits/HabitsInsights.tsx
 import Card from "@/components/cards/Card";
 
 export default function HabitsInsights() {
@@ -144,8 +143,7 @@ export default function HabitsInsights() {
             <span>Fri</span>
             <span>Sat</span>
             <span>Sun</span>
-          </div>{" "}
-          {/* ✅ fixed: was </h3> before */}
+          </div>
         </div>
       </Card>
     </div>
