@@ -1,9 +1,10 @@
+// src/components/tasks/InlineDueDate.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
-import { startTransition } from "react";
 import { formatDueLabel } from "@/lib/date";
+import { updateTask } from "@/app/tasks/actions";
 
 export default function InlineDueDate({
   id,
@@ -19,22 +20,20 @@ export default function InlineDueDate({
   const [val, setVal] = useState<string>(due ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function save(next: string) {
+  function save(next: string) {
     setEditing(false);
-    const body = { dueDate: next || null };
-    const res = await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    startTransition(async () => {
+      try {
+        await updateTask(id, { dueDate: next || null });
+        router.refresh();
+      } catch {
+        // noop; keep previous value on error
+      }
     });
-    if (!res.ok) return;
-    startTransition(() => router.refresh());
   }
 
   if (!editing) {
-    // Avoid `any`: compute the display value with explicit typing
     const displayDue: string | null = val || due || null;
-
     return (
       <button
         type="button"
@@ -42,8 +41,7 @@ export default function InlineDueDate({
           setEditing(true);
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
-        className="text-left w-full rounded cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2"
-        // no hover background; underline on hover only
+        className="w-full cursor-pointer rounded text-left transition-colors focus-visible:outline-none focus-visible:ring-2"
         style={{
           color: done
             ? "color-mix(in oklab, var(--twc-text) 45%, transparent)"

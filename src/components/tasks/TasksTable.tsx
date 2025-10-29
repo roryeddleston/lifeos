@@ -1,3 +1,4 @@
+// src/components/tasks/TasksTable.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import InlineTitle from "./InlineTitle";
 import InlineDueDate from "./InlineDueDate";
 import { GripVertical, CheckCircle2, ClipboardList } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
+import { deleteTask, reorderTasks, updateTask } from "@/app/tasks/actions";
 
 type TaskItem = {
   id: string;
@@ -29,23 +31,6 @@ type TaskItem = {
   status: "TODO" | "IN_PROGRESS" | "DONE";
   position?: number;
 };
-
-function loginRedirect() {
-  if (typeof window !== "undefined") {
-    const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
-      returnTo
-    )}`;
-  }
-}
-async function apiFetch(input: RequestInfo, init?: RequestInit) {
-  const res = await fetch(input, init);
-  if (res.status === 401) {
-    loginRedirect();
-    throw new Error("Unauthorized");
-  }
-  return res;
-}
 
 export default function TasksTable({
   initial,
@@ -58,17 +43,11 @@ export default function TasksTable({
 
   const [items, setItems] = useState<TaskItem[]>(initial);
   const [overId, setOverId] = useState<string | null>(null);
-
-  // Gate DnD until after mount to avoid hydration ID mismatches
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
-
-  // If server sends a new list (route change), reset local state
   useEffect(() => setItems(initial), [initial]);
 
   const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
-  /* ----------------- Optimistic mutators ----------------- */
 
   async function handleDelete(id: string) {
     const prev = items;
@@ -76,19 +55,16 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await apiFetch(`/api/tasks/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(String(res.status));
+      await deleteTask(id);
       toast({ variant: "success", title: "Task deleted" });
     } catch (err) {
-      if ((err as Error).message !== "Unauthorized") {
-        console.error(err);
-        setItems(prev);
-        toast({
-          variant: "error",
-          title: "Couldn’t delete",
-          description: "Network or server error.",
-        });
-      }
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Couldn’t delete",
+        description: "Network or server error.",
+      });
     }
   }
 
@@ -110,22 +86,15 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await apiFetch(`/api/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
+      await updateTask(id, { status: nextStatus });
     } catch (err) {
-      if ((err as Error).message !== "Unauthorized") {
-        console.error(err);
-        setItems(prev);
-        toast({
-          variant: "error",
-          title: "Update failed",
-          description: "Couldn’t toggle completion.",
-        });
-      }
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Couldn’t toggle completion.",
+      });
     }
   }
 
@@ -137,29 +106,20 @@ export default function TasksTable({
     setItems(next);
 
     try {
-      const res = await apiFetch(`/api/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: nextTitle }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
+      await updateTask(id, { title: nextTitle });
       return true;
     } catch (err) {
-      if ((err as Error).message !== "Unauthorized") {
-        console.error(err);
-        setItems(prev);
-        toast({
-          variant: "error",
-          title: "Update failed",
-          description: "Couldn’t save title.",
-        });
-      }
+      console.error(err);
+      setItems(prev);
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: "Couldn’t save title.",
+      });
       return false;
     }
   }
 
-  /* ----------------- Grouping for "all" view ----------------- */
-  // Remove "Tomorrow" section; send those items to "This Week".
   const grouped = useMemo(() => {
     if (view !== "all") return null;
 
@@ -183,28 +143,22 @@ export default function TasksTable({
 
     for (const t of items) {
       if (!t.dueDate) {
-        buckets[4].rows.push(t); // nodate
+        buckets[4].rows.push(t);
         continue;
       }
       const due = new Date(t.dueDate);
       due.setHours(0, 0, 0, 0);
 
-      if (due < midnight) {
-        buckets[0].rows.push(t); // overdue
-      } else if (due.getTime() === midnight.getTime()) {
-        buckets[1].rows.push(t); // today
-      } else if (due > midnight && due < in7) {
-        buckets[2].rows.push(t); // this week
-      } else {
-        buckets[3].rows.push(t); // later
-      }
+      if (due < midnight) buckets[0].rows.push(t);
+      else if (due.getTime() === midnight.getTime()) buckets[1].rows.push(t);
+      else if (due > midnight && due < in7) buckets[2].rows.push(t);
+      else buckets[3].rows.push(t);
     }
     return buckets.filter((b) => b.rows.length > 0);
   }, [items, view]);
 
   const hasAny = view === "all" ? (grouped?.length ?? 0) > 0 : items.length > 0;
 
-  // Accent these section headers
   const ACCENT_SECTIONS = new Set([
     "Overdue",
     "Today",
@@ -233,8 +187,8 @@ export default function TasksTable({
         }
       >
         {[
-          <td key="drag" className="py-2 pr-2 w-6" />,
-          <td key="chk" className="py-2 pr-2 w-10" />,
+          <td key="drag" className="w-6 py-2 pr-2" />,
+          <td key="chk" className="w-10 py-2 pr-2" />,
           <td key="label" className="py-2 pr-4">
             {label}
           </td>,
@@ -244,8 +198,6 @@ export default function TasksTable({
       </tr>
     );
   };
-
-  /* ----------------- DnD ----------------- */
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -271,34 +223,26 @@ export default function TasksTable({
       const [moved] = clone.splice(oldIndex, 1);
       clone.splice(newIndex, 0, moved);
 
-      // optimistic position update
       const optimistic: TaskItem[] = clone.map((t, i) => ({
         ...t,
         position: i + 1,
       }));
 
-      // fire and forget server reorder (we’re already optimistic)
-      const payload = optimistic.map(({ id }, i) => ({ id, position: i + 1 }));
-      apiFetch("/api/tasks/reorder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: payload }),
+      // fire-and-forget server reorder
+      reorderTasks({
+        items: optimistic.map(({ id }, i) => ({ id, position: i + 1 })),
       }).catch((err) => {
-        if ((err as Error).message !== "Unauthorized") {
-          console.error(err);
-          toast({
-            variant: "error",
-            title: "Reorder failed",
-            description: "We’ll try again shortly.",
-          });
-        }
+        console.error(err);
+        toast({
+          variant: "error",
+          title: "Reorder failed",
+          description: "We’ll try again shortly.",
+        });
       });
 
       return optimistic;
     });
   }
-
-  /* ----------------- Rows ----------------- */
 
   function StaticRow({ t, isLast }: { t: TaskItem; isLast: boolean }) {
     const isDone = t.status === "DONE";
@@ -319,7 +263,7 @@ export default function TasksTable({
         }}
       >
         {[
-          <td key="drag" className="py-3 pr-2 align-middle w-6">
+          <td key="drag" className="w-6 py-3 pr-2 align-middle">
             <span
               aria-hidden
               className="inline-flex p-1"
@@ -327,10 +271,10 @@ export default function TasksTable({
                 color: "color-mix(in oklab, var(--twc-text) 60%, transparent)",
               }}
             >
-              <GripVertical className="w-4 h-4 opacity-40" />
+              <GripVertical className="h-4 w-4 opacity-40" />
             </span>
           </td>,
-          <td key="chk" className="py-3 pr-2 align-middle w-10">
+          <td key="chk" className="w-10 py-3 pr-2 align-middle">
             <RowComplete
               id={t.id}
               completed={isDone}
@@ -353,12 +297,7 @@ export default function TasksTable({
             <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
           </td>,
           <td key="actions" className="py-3 pr-0 text-right align-middle">
-            <RowActions
-              id={t.id}
-              title={t.title}
-              dueDate={t.dueDate}
-              onDelete={() => handleDelete(t.id)}
-            />
+            <RowActions onDelete={() => handleDelete(t.id)} />
           </td>,
         ]}
       </tr>
@@ -414,10 +353,10 @@ export default function TasksTable({
         className="group"
       >
         {[
-          <td key="drag" className="py-3 pr-2 align-middle w-6">
+          <td key="drag" className="w-6 py-3 pr-2 align-middle">
             <button
               type="button"
-              className="p-1 rounded cursor-grab active:cursor-grabbing"
+              className="cursor-grab rounded p-1 active:cursor-grabbing"
               title="Drag to reorder"
               aria-label="Drag to reorder"
               {...attributes}
@@ -426,10 +365,10 @@ export default function TasksTable({
                 color: "color-mix(in oklab, var(--twc-text) 60%, transparent)",
               }}
             >
-              <GripVertical className="w-4 h-4" />
+              <GripVertical className="h-4 w-4" />
             </button>
           </td>,
-          <td key="chk" className="py-3 pr-2 align-middle w-10">
+          <td key="chk" className="w-10 py-3 pr-2 align-middle">
             <RowComplete
               id={t.id}
               completed={isDone}
@@ -452,12 +391,7 @@ export default function TasksTable({
             <InlineDueDate id={t.id} due={t.dueDate} done={isDone} />
           </td>,
           <td key="actions" className="py-3 pr-0 text-right align-middle">
-            <RowActions
-              id={t.id}
-              title={t.title}
-              dueDate={t.dueDate}
-              onDelete={() => handleDelete(t.id)}
-            />
+            <RowActions onDelete={() => handleDelete(t.id)} />
           </td>,
         ]}
       </tr>
@@ -495,8 +429,8 @@ export default function TasksTable({
         }}
       >
         {[
-          <th key="drag" className="py-2 pr-2 w-6" />,
-          <th key="chk" className="py-2 pr-2 w-10" />,
+          <th key="drag" className="w-6 py-2 pr-2" />,
+          <th key="chk" className="w-10 py-2 pr-2" />,
           <th key="title" className="py-2 pr-4">
             Title
           </th>,
@@ -514,7 +448,7 @@ export default function TasksTable({
   const EmptyBlock = () => {
     const isDoneView = view === "done";
     return (
-      <div className="py-16 flex w-full items-center justify-center">
+      <div className="flex w-full items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3 text-center">
           {isDoneView ? (
             <CheckCircle2

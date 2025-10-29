@@ -1,27 +1,29 @@
+// src/app/tasks/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import Card from "@/components/cards/Card";
-import TasksTable from "../../components/tasks/TasksTable";
+import TasksTable from "@/components/tasks/TasksTable";
 import QuickAdd from "@/components/tasks/QuickAddTask";
-import Filters from "../../components/tasks/Filters";
+import Filters from "@/components/tasks/Filters";
 
 export const dynamic = "force-dynamic";
 
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
-type PageProps = {
-  searchParams: Promise<{ view?: string }>;
-};
-
-export default async function TasksPage({ searchParams }: PageProps) {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams?: { view?: string | string[] };
+}) {
   const { userId } = await auth();
-  if (!userId) return null; // optionally redirect to sign-in page
+  if (!userId) return null;
 
-  const { view: rawView } = await searchParams;
+  const rawView = Array.isArray(searchParams?.view)
+    ? searchParams?.view[0]
+    : searchParams?.view;
   const view = (rawView ?? "all").toLowerCase() as AllowedView;
 
-  // Date helpers
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const addDays = (n: number) => {
@@ -30,13 +32,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
     return d;
   };
 
-  // Base filter
   const where: Prisma.TaskWhereInput =
     view === "done"
       ? { status: "DONE", userId }
       : { status: { not: "DONE" }, userId };
 
-  // View-specific filters
   if (view === "today") {
     where.dueDate = { gte: today, lt: addDays(1) };
   } else if (view === "week") {
@@ -48,9 +48,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const tasksDb = await prisma.task.findMany({
     where,
     orderBy: [
-      { dueDate: { sort: "asc", nulls: "last" } as Prisma.SortOrderInput },
-      { createdAt: "asc" as Prisma.SortOrder },
-    ] as Prisma.TaskOrderByWithRelationInput[],
+      { dueDate: { sort: "asc", nulls: "last" } },
+      { createdAt: "asc" },
+    ],
     select: {
       id: true,
       title: true,
@@ -78,10 +78,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
       <Card className="border-0 !shadow-none">
         <section
           className="rounded-xl"
-          style={{
-            backgroundColor: "var(--twc-surface)",
-            border: "none",
-          }}
+          style={{ backgroundColor: "var(--twc-surface)", border: "none" }}
         >
           <div className="p-4">
             <TasksTable initial={tasks} view={view} />

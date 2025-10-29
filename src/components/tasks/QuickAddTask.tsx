@@ -1,70 +1,30 @@
 "use client";
 
-import {
-  useEffect,
-  useOptimistic,
-  useRef,
-  useState,
-  startTransition,
-} from "react";
+import { useEffect, useRef, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { parseQuickDate } from "@/lib/quickdate";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
-
-type Task = {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  status: string;
-};
-
-function loginRedirect() {
-  if (typeof window !== "undefined") {
-    const returnTo = window.location.pathname + window.location.search;
-    window.location.href = `/api/auth/login?returnTo=${encodeURIComponent(
-      returnTo
-    )}`;
-  }
-}
-async function apiFetch(input: RequestInfo, init?: RequestInit) {
-  const res = await fetch(input, init);
-  if (res.status === 401) {
-    loginRedirect();
-    throw new Error("Unauthorized");
-  }
-  return res;
-}
+import { createTasksBulk } from "@/app/tasks/actions";
 
 function todayLocalISODate(): string {
-  // returns YYYY-MM-DD in local time
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
 }
 
-/** Coerce 'YYYY-MM-DD' (or already-ISO) into full ISO datetime string */
 function toFullISOStringOrNull(
   dateLike: string | null | undefined
 ): string | null {
   if (!dateLike) return null;
   const s = dateLike.trim();
   if (!s) return null;
-  // If already a parseable ISO, keep it
-  const parsed = Date.parse(s);
-  if (!Number.isNaN(parsed) && /t/i.test(s)) {
-    return new Date(parsed).toISOString();
-  }
-  // If YYYY-MM-DD, make it midnight UTC
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    return new Date(`${s}T00:00:00.000Z`).toISOString();
-  }
-  // Last resort: try Date(...)
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00.000Z`;
+  const ts = Date.parse(s);
+  return Number.isNaN(ts) ? null : new Date(ts).toISOString();
 }
 
-export default function QuickAdd() {
+export default function QuickAddTask() {
   const router = useRouter();
   const toast = useToast();
 
@@ -73,9 +33,6 @@ export default function QuickAdd() {
     todayLocalISODate()
   );
   const [submitting, setSubmitting] = useState(false);
-
-  // Only need the updater, not the optimistic state itself
-  const [, addOptimistic] = useOptimistic<Task[]>([]);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,12 +49,10 @@ export default function QuickAdd() {
 
   function toPayload(lines: string) {
     return splitLines(lines).map((line) => {
-      // parseQuickDate may return YYYY-MM-DD; normalize to full ISO
-      const parsed = parseQuickDate(line); // e.g. "2025-09-03" or undefined
+      const parsed = parseQuickDate(line); // may be "YYYY-MM-DD"
       const chosen = parsed ?? selectedDate ?? null;
       const dueISO = toFullISOStringOrNull(chosen);
 
-      // Strip date tokens from title (keep your patterns)
       const cleaned = line
         .replace(
           /\b(today|tomorrow|sun|mon|tue|wed|thu|fri|sat|in\s+\d+\s+days?)\b/gi,
@@ -105,6 +60,7 @@ export default function QuickAdd() {
         )
         .replace(/\s{2,}/g, " ")
         .trim();
+
       const title =
         cleaned.length > 0
           ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
@@ -118,76 +74,25 @@ export default function QuickAdd() {
     const tasksPayload = toPayload(lines).filter((t) => t.title.trim().length);
     if (tasksPayload.length === 0) return;
 
-    // Optimistic placeholders (local only)
-    startTransition(() =>
-      addOptimistic(
-        tasksPayload.map((t) => ({
-          id: crypto.randomUUID(),
-          title: t.title,
-          // keep UI-friendly YYYY-MM-DD for optimistic display if you like
-          dueDate: selectedDate ?? null,
-          status: "TODO",
-        }))
-      )
-    );
-
     setSubmitting(true);
     try {
-      // 1) Primary attempt: send { tasks } with normalized ISO datetimes
-      let res = await apiFetch("/api/tasks/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: tasksPayload }),
-      });
-
-      // 2) If server still says "No valid tasks", try { text } fallback
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        // Try fallback only if the server complained about validity
-        if (/No valid tasks/i.test(text)) {
-          res = await apiFetch("/api/tasks/bulk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: lines }),
-          });
-        }
-        if (!res.ok) {
-          console.error(
-            "POST /api/tasks/bulk failed:",
-            res.status,
-            text || (await res.text().catch(() => ""))
-          );
-          toast({
-            variant: "error",
-            title: "Could not create task(s)",
-            description: `HTTP ${res.status}`,
-          });
-          return;
-        }
-      }
-
+      await createTasksBulk({ tasks: tasksPayload });
       startTransition(() => router.refresh());
       setValue("");
       setSelectedDate(todayLocalISODate());
-
-      // Preserve focus next frame
       requestAnimationFrame(() => {
         requestAnimationFrame(() => inputRef.current?.focus());
       });
-
       toast({
         variant: "success",
         title: tasksPayload.length > 1 ? "Tasks added" : "Task added",
       });
-    } catch (e) {
-      if ((e as Error).message !== "Unauthorized") {
-        console.error(e);
-        toast({
-          variant: "error",
-          title: "Network error",
-          description: "Please try again.",
-        });
-      }
+    } catch {
+      toast({
+        variant: "error",
+        title: "Could not create task(s)",
+        description: "Please try again.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -209,7 +114,7 @@ export default function QuickAdd() {
 
   return (
     <div
-      className="rounded-xl p-3 space-y-3"
+      className="space-y-3 rounded-xl p-3"
       style={{
         border: "1px solid var(--twc-border)",
         backgroundColor: "var(--twc-surface)",
@@ -239,7 +144,7 @@ export default function QuickAdd() {
           type="date"
           value={selectedDate ?? ""}
           onChange={(e) => setSelectedDate(e.target.value || null)}
-          className="rounded-md border px-2 py-1 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
+          className="cursor-pointer rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--twc-accent)]"
           aria-label="Due date (optional)"
           title="Due date (optional)"
           style={{
@@ -251,10 +156,7 @@ export default function QuickAdd() {
 
         <AddActionButton
           label="Add To-do"
-          onClick={(e) => {
-            if (e?.currentTarget?.type !== "button") {
-              // no-op
-            }
+          onClick={() => {
             const text = value.trim();
             if (text) createMany(text);
           }}
