@@ -14,7 +14,6 @@ function MainColumn({ children }: PropsWithChildren) {
 
   return (
     <div className="flex-1 min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
-      {/* Desktop topbar */}
       <div className="hidden md:block">
         <Topbar
           title={title}
@@ -23,12 +22,9 @@ function MainColumn({ children }: PropsWithChildren) {
           primaryActionLabel={action?.label ?? "New Task"}
         />
       </div>
-
-      {/* Mobile topbar */}
       <div className="md:hidden">
         <TopbarMobile title={title ?? "Life OS"} />
       </div>
-
       <main className="mx-auto max-w-6xl px-4 py-6 w-full">{children}</main>
     </div>
   );
@@ -37,10 +33,7 @@ function MainColumn({ children }: PropsWithChildren) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen md:flex bg-[var(--bg)] text-[var(--text)]">
-      {/* Sidebar for desktop only */}
       <Sidebar className="hidden md:block" />
-
-      {/* Provide dynamic page header context */}
       <PageHeaderProvider>
         <MainColumn>{children}</MainColumn>
       </PageHeaderProvider>

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import { montserrat } from "@/styles/fonts";
-import { ToastProvider } from "@/components/ui/Toaster";
-import ThemeProvider from "@/components/theme/ThemeProvider";
+import Providers from "./providers";
 
 import {
   ClerkProvider,
@@ -30,23 +29,19 @@ export default function RootLayout({
         <body
           className={`${montserrat.className} min-h-screen bg-[var(--bg)] text-[var(--text)]`}
         >
-          <ThemeProvider>
-            <ToastProvider>
-              <ClerkLoaded>
-                <SignedIn>
-                  <AppShell>{children}</AppShell>
-                </SignedIn>
-                <SignedOut>{children}</SignedOut>
-              </ClerkLoaded>
-
-              {/* Optional: Show a loading spinner while Clerk is initializing */}
-              <ClerkLoading>
-                <div className="flex justify-center items-center min-h-screen">
-                  <p>Loading...</p>
-                </div>
-              </ClerkLoading>
-            </ToastProvider>
-          </ThemeProvider>
+          <ClerkLoaded>
+            <SignedIn>
+              <Providers>
+                <AppShell>{children}</AppShell>
+              </Providers>
+            </SignedIn>
+            <SignedOut>{children}</SignedOut>
+          </ClerkLoaded>
+          <ClerkLoading>
+            <div className="flex justify-center items-center min-h-screen">
+              <p>Loading...</p>
+            </div>
+          </ClerkLoading>
         </body>
       </html>
     </ClerkProvider>
