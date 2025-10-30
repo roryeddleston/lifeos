@@ -1,5 +1,6 @@
 import { BookOpen, Dumbbell } from "lucide-react";
 import type { ReactNode } from "react";
+import Card from "@/components/cards/Card";
 
 function FeatureCard({
   icon,
@@ -11,10 +12,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div
-      className="rounded-xl border p-3 md:p-4 transition-colors"
-      style={{ borderColor: "var(--twc-border)" }}
-    >
+    <Card className="rounded-xl p-4 md:p-5">
       <div className="flex items-start gap-3">
         <div
           className="rounded-lg p-2"
@@ -39,14 +37,17 @@ function FeatureCard({
           </p>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 export default function ComingSoon() {
   return (
     <div className="p-3 md:p-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+      <h3 className="text-md font-bold" style={{ color: "var(--twc-text)" }}>
+        Coming soon
+      </h3>
+      <div className="grid grid-cols-1 mt-6 gap-3 md:grid-cols-2 md:gap-4">
         <FeatureCard
           icon={<BookOpen className="h-5 w-5" />}
           title="Journal"
