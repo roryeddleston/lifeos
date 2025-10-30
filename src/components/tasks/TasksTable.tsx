@@ -1,4 +1,3 @@
-// src/components/tasks/TasksTable.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -228,7 +227,6 @@ export default function TasksTable({
         position: i + 1,
       }));
 
-      // fire-and-forget server reorder
       reorderTasks({
         items: optimistic.map(({ id }, i) => ({ id, position: i + 1 })),
       }).catch((err) => {
