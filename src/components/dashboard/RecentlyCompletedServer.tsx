@@ -1,83 +1,105 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import Card from "@/components/cards/Card";
-import Link from "next/link";
-import { formatDateGB } from "@/lib/date";
+import { unstable_noStore as noStore } from "next/cache";
 
-type Row = { id: string; title: string; completedAt: Date | null };
+export const runtime = "nodejs";
+
+type Row = { id: string; title: string; completedAt: string };
 
 export default async function RecentlyCompletedServer() {
+  noStore(); // always fetch fresh
   const { userId } = await auth();
   if (!userId) return null;
 
-  let tasks: Row[] = [];
-
+  let items: Row[] = [];
   try {
-    tasks = await prisma.$queryRaw<Row[]>`
-      SELECT "id", "title", "completedAt"
-      FROM "Task"
-      WHERE "userId" = ${userId}
-        AND "status" = 'DONE'
-        AND "completedAt" IS NOT NULL
-      ORDER BY "completedAt" DESC
-      LIMIT 5
-    `;
+    const rows = await prisma.task.findMany({
+      where: { userId, status: "DONE" },
+      orderBy: [
+        { completedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+      take: 5,
+      select: { id: true, title: true, completedAt: true, createdAt: true },
+    });
+
+    items = rows.map((r) => {
+      const when = r.completedAt ?? r.createdAt; // fallback if null
+      return { id: r.id, title: r.title, completedAt: when.toISOString() };
+    });
   } catch {
-    tasks = [];
+    items = [];
   }
 
-  return (
-    <Card className="p-4">
-      <div className="mb-3">
-        <h3 className="text-md font-bold" style={{ color: "var(--twc-text)" }}>
-          Recently completed
-        </h3>
-        <p className="mt-3 text-sm" style={{ color: "var(--twc-muted)" }}>
-          Most recent 5 tasks you finished
-        </p>
-      </div>
+  const hasAny = items.length > 0;
 
-      {tasks.length === 0 ? (
-        <div className="text-sm" style={{ color: "var(--twc-muted)" }}>
-          Nothing completed yet.
+  return (
+    <section
+      className="rounded-xl border"
+      style={{
+        borderColor: "var(--twc-border)",
+        backgroundColor: "var(--twc-surface)",
+      }}
+    >
+      <div className="p-8">
+        <div className="flex items-center justify-between">
+          <h3
+            className="text-md font-bold"
+            style={{ color: "var(--twc-text)" }}
+          >
+            Recently completed
+          </h3>
         </div>
-      ) : (
-        <>
-          <ul className="divide-y pt-4 divide-[var(--twc-border)]">
-            {tasks.map((t) => (
-              <li key={t.id} className="py-1.5">
+
+        {!hasAny ? (
+          <div
+            className="mt-6 rounded-lg p-4 text-center"
+            style={{
+              border: "1px solid var(--twc-border)",
+              backgroundColor:
+                "color-mix(in oklab, var(--twc-text) 4%, var(--twc-surface))",
+              color: "var(--twc-muted)",
+            }}
+          >
+            Nothing completed yet — check something off!
+          </div>
+        ) : (
+          <ul className="mt-3" role="list">
+            {items.map((t, idx) => (
+              <li
+                key={t.id}
+                className="py-2.5"
+                style={{
+                  borderBottom:
+                    idx === items.length - 1
+                      ? "none"
+                      : "1px solid color-mix(in oklab, var(--twc-text) 10%, transparent)",
+                }}
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <span
-                    className="truncate text-[14px] leading-5"
+                  <div
+                    className="min-w-0 truncate text-sm"
                     style={{ color: "var(--twc-text)" }}
                   >
                     {t.title}
-                  </span>
-                  <span
-                    className="shrink-0 text-xs tabular-nums"
+                  </div>
+                  <time
+                    dateTime={t.completedAt}
+                    className="shrink-0 text-xs"
                     style={{ color: "var(--twc-muted)" }}
-                    title={t.completedAt ? t.completedAt.toISOString() : ""}
                   >
-                    {t.completedAt
-                      ? formatDateGB(t.completedAt.toISOString())
-                      : ""}
-                  </span>
+                    {new Date(t.completedAt).toLocaleDateString("en-GB", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </time>
                 </div>
               </li>
             ))}
           </ul>
-
-          <div className="mt-3 text-right">
-            <Link
-              href="/tasks?view=done"
-              className="text-sm"
-              style={{ color: "var(--twc-accent)" }}
-            >
-              View all completed
-            </Link>
-          </div>
-        </>
-      )}
-    </Card>
+        )}
+      </div>
+    </section>
   );
 }

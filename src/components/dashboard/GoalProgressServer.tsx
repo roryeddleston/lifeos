@@ -1,44 +1,37 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { unstable_noStore as noStore } from "next/cache";
 
-type GoalProgress = {
-  id: string;
-  title: string;
-  progress: number; // 0..100
-};
+type GoalProgress = { id: string; title: string; progress: number };
 
 export default async function GoalProgressServer() {
+  noStore(); // always render dynamically (no caching)
   const { userId } = await auth();
   if (!userId) return null;
 
-  // Fetch required fields only
-  const goalsDb = await prisma.goal.findMany({
-    where: { userId },
-    select: {
-      id: true,
-      title: true,
-      targetValue: true,
-      currentValue: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
+  let items: GoalProgress[] = [];
+  try {
+    const rows = await prisma.goal.findMany({
+      where: { userId },
+      select: { id: true, title: true, targetValue: true, currentValue: true },
+      orderBy: { createdAt: "asc" },
+      take: 24, // cap work on server
+    });
 
-  // Normalize to 0..100 and guard against bad/zero targets
-  const goals: GoalProgress[] = goalsDb.map((g) => {
-    const target = Number(g.targetValue) || 0;
-    const current = Math.max(0, Number(g.currentValue) || 0);
-    const pct =
-      target > 0
-        ? Math.max(0, Math.min(100, Math.round((current / target) * 100)))
-        : 0;
-    return { id: g.id, title: g.title, progress: pct };
-  });
-
-  // Sort by progress (desc) and take top 6
-  const items: GoalProgress[] = goals
-    .slice()
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, 6);
+    items = rows
+      .map(({ id, title, targetValue, currentValue }) => {
+        const target = Math.max(0, Number(targetValue) || 0);
+        const current = Math.max(0, Number(currentValue) || 0);
+        const pct =
+          target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+        return { id, title, progress: pct };
+      })
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 6);
+  } catch {
+    // soft-fail: show empty state instead of keeping Suspense fallback forever
+    items = [];
+  }
 
   const hasAny = items.length > 0;
 
@@ -50,16 +43,25 @@ export default async function GoalProgressServer() {
         backgroundColor: "var(--twc-surface)",
       }}
     >
-      <div className="p-3 md:p-4">
-        <div className="flex items-center justify-between">
-          <h3
-            className="text-sm font-medium"
-            style={{ color: "var(--twc-text)" }}
+      <div className="p-8">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 m">
+            <h3
+              className="text-md font-bold"
+              style={{ color: "var(--twc-text)" }}
+            >
+              Goal progression
+            </h3>
+            <p className="text-sm mt-1" style={{ color: "var(--twc-muted)" }}>
+              Overview of your top goals
+            </p>
+          </div>
+          <span
+            className="text-xs shrink-0 self-start"
+            style={{ color: "var(--twc-muted)" }}
+            aria-hidden
           >
-            Goal progression
-          </h3>
-          <span className="text-xs" style={{ color: "var(--twc-muted)" }}>
-            {goals.length} total
+            %
           </span>
         </div>
 

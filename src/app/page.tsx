@@ -6,8 +6,9 @@ import GoalProgressServer from "@/components/dashboard/GoalProgressServer";
 import RecentlyCompletedServer from "@/components/dashboard/RecentlyCompletedServer";
 import ComingSoon from "@/components/dashboard/ComingSoon";
 
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { userId } = await auth();
@@ -31,6 +32,7 @@ export default async function HomePage() {
         <StatCardsServer />
       </Suspense>
 
+      {/* Chart-sized skeleton */}
       <Suspense
         fallback={
           <div
@@ -45,6 +47,7 @@ export default async function HomePage() {
         <GoalProgressServer />
       </Suspense>
 
+      {/* List-sized skeleton */}
       <Suspense
         fallback={
           <div
