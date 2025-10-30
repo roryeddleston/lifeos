@@ -1,87 +1,94 @@
-// src/components/dashboard/GoalProgressServer.tsx
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import Card from "@/components/cards/Card";
+
+type GoalProgress = {
+  id: string;
+  title: string;
+  progress: number; // 0..100
+};
 
 export default async function GoalProgressServer() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  let goals: { id: string; title: string; progress: number };
-  [] = [];
+  // Fetch required fields only
+  const goalsDb = await prisma.goal.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      title: true,
+      targetValue: true,
+      currentValue: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
 
-  try {
-    const rows = await prisma.goal.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        title: true,
-        currentValue: true,
-        targetValue: true,
-      },
-      orderBy: { createdAt: "asc" },
-    });
+  // Normalize to 0..100 and guard against bad/zero targets
+  const goals: GoalProgress[] = goalsDb.map((g) => {
+    const target = Number(g.targetValue) || 0;
+    const current = Math.max(0, Number(g.currentValue) || 0);
+    const pct =
+      target > 0
+        ? Math.max(0, Math.min(100, Math.round((current / target) * 100)))
+        : 0;
+    return { id: g.id, title: g.title, progress: pct };
+  });
 
-    goals = rows
-      .filter((g) => (g.targetValue ?? 0) > 0)
-      .map((g) => {
-        const pct = Math.round(
-          Math.max(
-            0,
-            Math.min(1, (g.currentValue ?? 0) / (g.targetValue ?? 1))
-          ) * 100
-        );
-        return { id: g.id, title: g.title, progress: pct };
-      })
-      .sort((a, b) => b.progress - a.progress)
-      .slice(0, 5);
-  } catch {
-    goals = [];
-  }
+  // Sort by progress (desc) and take top 6
+  const items: GoalProgress[] = goals
+    .slice()
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 6);
 
-  const max = 100;
+  const hasAny = items.length > 0;
 
   return (
-    <Card className="p-4">
-      <h3 className="text-md font-bold" style={{ color: "var(--twc-text)" }}>
-        Goal progression
-      </h3>
-      <p className="mt-3 text-sm" style={{ color: "var(--twc-muted)" }}>
-        Progress toward each active goal
-      </p>
-
-      {goals.length === 0 ? (
-        <div
-          className="mt-6 rounded-lg border p-6 text-center text-sm"
-          style={{
-            borderColor: "var(--twc-border)",
-            color: "var(--twc-muted)",
-          }}
-        >
-          No goals yet.
+    <section
+      className="rounded-xl border"
+      style={{
+        borderColor: "var(--twc-border)",
+        backgroundColor: "var(--twc-surface)",
+      }}
+    >
+      <div className="p-3 md:p-4">
+        <div className="flex items-center justify-between">
+          <h3
+            className="text-sm font-medium"
+            style={{ color: "var(--twc-text)" }}
+          >
+            Goal progression
+          </h3>
+          <span className="text-xs" style={{ color: "var(--twc-muted)" }}>
+            {goals.length} total
+          </span>
         </div>
-      ) : (
-        <div className="mt-4">
-          <div
-            className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 pb-2 text-xs"
-            style={{ color: "var(--twc-muted)" }}
-          ></div>
 
-          <ul className="space-y-2">
-            {goals.map((g) => (
-              <li
-                key={g.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
-              >
-                <div className="min-w-0">
+        {!hasAny ? (
+          <div
+            className="mt-6 rounded-lg p-4 text-center"
+            style={{
+              border: "1px solid var(--twc-border)",
+              backgroundColor:
+                "color-mix(in oklab, var(--twc-text) 4%, var(--twc-surface))",
+              color: "var(--twc-muted)",
+            }}
+          >
+            No goals yet — add one to see progress.
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {items.map((g) => (
+              <li key={g.id} className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
                   <div
-                    className="truncate text-sm"
+                    className="text-sm truncate"
                     style={{ color: "var(--twc-text)" }}
+                    title={g.title}
                   >
                     {g.title}
                   </div>
                   <div
-                    className="mt-1 h-2 w-full rounded-full"
+                    className="mt-2 h-2 w-full rounded-full"
                     style={{
                       backgroundColor:
                         "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
@@ -96,22 +103,23 @@ export default async function GoalProgressServer() {
                       aria-label={`${g.progress}% complete`}
                       role="progressbar"
                       aria-valuemin={0}
-                      aria-valuemax={max}
+                      aria-valuemax={100}
                       aria-valuenow={g.progress}
                     />
                   </div>
                 </div>
+
                 <div
-                  className="pl-2 text-sm tabular-nums"
-                  style={{ color: "var(--twc-text)" }}
+                  className="w-12 text-right text-xs tabular-nums"
+                  style={{ color: "var(--twc-muted)" }}
                 >
                   {g.progress}%
                 </div>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-    </Card>
+        )}
+      </div>
+    </section>
   );
 }
