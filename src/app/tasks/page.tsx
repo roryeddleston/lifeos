@@ -1,4 +1,3 @@
-// src/app/tasks/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -15,14 +14,13 @@ type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams?: { view?: string | string[] };
+  searchParams?: Promise<{ view?: string | string[] }>;
 }) {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const rawView = Array.isArray(searchParams?.view)
-    ? searchParams?.view[0]
-    : searchParams?.view;
+  const sp = await searchParams;
+  const rawView = Array.isArray(sp?.view) ? sp?.view[0] : sp?.view;
   const view = (rawView?.toLowerCase() ?? "all") as AllowedView;
 
   // Date helpers
