@@ -1,4 +1,3 @@
-// src/app/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
