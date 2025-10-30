@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,7 +19,7 @@ model Habit {
   completions  HabitRecord[] @relation("HabitCompletions")
   userId       String
 
-  @@index([userId, createdAt])
+  @@index([userId, createdAt], name: "habit_user_created_idx")
 }
 
 model HabitRecord {
@@ -29,8 +31,11 @@ model HabitRecord {
   habitId   String
 
   @@unique([habitId, date], name: "habitId_date")
-  @@index([habitId, completed, date])
-  @@index([date])
+  @@index([habitId, completed, date], name: "habitrecord_habit_completed_date_idx")
+  @@index([date], name: "habitrecord_date_idx")
+
+  // Added: alternative order to speed queries that filter by completed + date range across many habits
+  @@index([completed, date, habitId], name: "habitrecord_completed_date_habit_idx")
 }
 
 /* -------------------- Tasks -------------------- */
@@ -52,12 +57,15 @@ model Task {
   userId      String
   completedAt DateTime?
 
-  @@index([status, completedAt])
-  @@index([status, dueDate, createdAt])
-  @@index([userId, status, dueDate])
-  @@index([userId, createdAt])
-  @@index([userId, position])
-  @@index([dueDate])
+  @@index([status, completedAt], name: "task_status_completedat_idx")
+  @@index([status, dueDate, createdAt], name: "task_status_due_created_idx")
+  @@index([userId, status, dueDate], name: "task_user_status_due_idx")
+  @@index([userId, createdAt], name: "task_user_created_idx")
+  @@index([userId, position], name: "task_user_position_idx")
+  @@index([dueDate], name: "task_duedate_idx")
+
+  // Added: matches common list view (filter by user+status, sort by dueDate then createdAt)
+  @@index([userId, status, dueDate, createdAt], name: "task_user_status_due_created_comp_idx")
 }
 
 /* -------------------- Goals -------------------- */
@@ -73,6 +81,9 @@ model Goal {
   createdAt    DateTime @default(now())
   userId       String
 
-  @@index([userId, deadline])
-  @@index([userId, createdAt])
+  @@index([userId, deadline], name: "goal_user_deadline_idx")
+  @@index([userId, createdAt], name: "goal_user_created_idx")
+
+  // Added: speeds “active vs completed” progress scans per user
+  @@index([userId, currentValue, targetValue], name: "goal_user_progress_idx")
 }
