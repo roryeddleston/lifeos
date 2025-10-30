@@ -7,6 +7,7 @@ import StreakMetric from "@/components/habits/StreakMetric";
 import SparkBars from "@/components/habits/SparkBars";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function startOfDayUTC(d = new Date()) {
   return new Date(

@@ -8,6 +8,7 @@ import RecentlyCompletedServer from "@/components/dashboard/RecentlyCompletedSer
 import ComingSoon from "@/components/dashboard/ComingSoon";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export default async function HomePage() {
   const { userId } = await auth();

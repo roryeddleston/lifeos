@@ -8,22 +8,24 @@ import QuickAdd from "@/components/tasks/QuickAddTask";
 import Filters from "@/components/tasks/Filters";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
-export default async function TasksPage({
-  searchParams,
-}: {
+type PageProps = {
   searchParams?: { view?: string | string[] };
-}) {
+};
+
+export default async function TasksPage({ searchParams }: PageProps) {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const rawView = Array.isArray(searchParams?.view)
+  const rawViewParam = Array.isArray(searchParams?.view)
     ? searchParams?.view[0]
     : searchParams?.view;
-  const view = (rawView ?? "all").toLowerCase() as AllowedView;
+  const view = (rawViewParam?.toLowerCase() ?? "all") as AllowedView;
 
+  // Date helpers (local midnight)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const addDays = (n: number) => {
@@ -32,11 +34,13 @@ export default async function TasksPage({
     return d;
   };
 
+  // Base filter
   const where: Prisma.TaskWhereInput =
     view === "done"
       ? { status: "DONE", userId }
-      : { status: { not: "DONE" }, userId };
+      : { userId, status: { not: "DONE" } };
 
+  // View-specific filters
   if (view === "today") {
     where.dueDate = { gte: today, lt: addDays(1) };
   } else if (view === "week") {
@@ -45,12 +49,14 @@ export default async function TasksPage({
     where.dueDate = null;
   }
 
+  const orderBy: Prisma.TaskOrderByWithRelationInput[] = [
+    { dueDate: { sort: "asc", nulls: "last" } },
+    { createdAt: "asc" },
+  ];
+
   const tasksDb = await prisma.task.findMany({
     where,
-    orderBy: [
-      { dueDate: { sort: "asc", nulls: "last" } },
-      { createdAt: "asc" },
-    ],
+    orderBy,
     select: {
       id: true,
       title: true,
