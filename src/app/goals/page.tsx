@@ -7,27 +7,44 @@ import { formatDueLabel } from "@/lib/date";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type GoalRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  deadline: Date | null;
+  createdAt: Date;
+};
+
 export default async function GoalsPage() {
   const { userId } = await auth();
-  if (!userId) {
-    return null; // or redirect, or show a login prompt
+  if (!userId) return null;
+
+  let goalsDb: GoalRow[] = [];
+  try {
+    goalsDb = await prisma.goal.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        targetValue: true,
+        currentValue: true,
+        unit: true,
+        deadline: true,
+        createdAt: true,
+      },
+    });
+  } catch {
+    // Fail open — show empty state instead of crashing the page.
+    console.warn("GoalsPage: DB unavailable, rendering empty state.");
+    goalsDb = [];
   }
 
-  const goalsDb = await prisma.goal.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      targetValue: true,
-      currentValue: true,
-      unit: true,
-      deadline: true,
-      createdAt: true,
-    },
-  });
-
+  // Normalize dates for client components (strings not Dates)
   const goals = goalsDb.map((g) => ({
     ...g,
     deadline: g.deadline ? g.deadline.toISOString() : null,
@@ -39,6 +56,12 @@ export default async function GoalsPage() {
 
   const total = goals.length;
   const completedCount = completed.length;
+
+  const nextDeadlineIso =
+    goals
+      .filter((g) => g.deadline)
+      .map((g) => g.deadline as string)
+      .sort()[0] ?? null;
 
   return (
     <div className="px-4 md:px-6 py-6 space-y-8">
@@ -52,13 +75,8 @@ export default async function GoalsPage() {
         {total > 0 && (
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             {completedCount}/{total} completed ·{" "}
-            {goals.some((g) => g.deadline)
-              ? `next deadline: ${formatDueLabel(
-                  goals
-                    .filter((g) => g.deadline)
-                    .map((g) => g.deadline as string)
-                    .sort()[0] ?? null
-                )}`
+            {nextDeadlineIso
+              ? `next deadline: ${formatDueLabel(nextDeadlineIso)}`
               : "no deadlines"}
           </p>
         )}
