@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export default function RowComplete({
-  id: _id, // unused; prefix for ESLint
+  id,
   completed,
   onToggle,
 }: {
@@ -26,6 +26,7 @@ export default function RowComplete({
   return (
     <button
       type="button"
+      data-id={id}
       className="inline-flex h-5 w-5 items-center justify-center rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2"
       onClick={() => toggle(!completed)}
       disabled={loading}

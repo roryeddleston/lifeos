@@ -12,20 +12,20 @@ export const runtime = "nodejs";
 
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
 
-type PageProps = {
+export default async function TasksPage({
+  searchParams,
+}: {
   searchParams?: { view?: string | string[] };
-};
-
-export default async function TasksPage({ searchParams }: PageProps) {
+}) {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const rawViewParam = Array.isArray(searchParams?.view)
+  const rawView = Array.isArray(searchParams?.view)
     ? searchParams?.view[0]
     : searchParams?.view;
-  const view = (rawViewParam?.toLowerCase() ?? "all") as AllowedView;
+  const view = (rawView?.toLowerCase() ?? "all") as AllowedView;
 
-  // Date helpers (local midnight)
+  // Date helpers
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const addDays = (n: number) => {
@@ -49,14 +49,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
     where.dueDate = null;
   }
 
-  const orderBy: Prisma.TaskOrderByWithRelationInput[] = [
-    { dueDate: { sort: "asc", nulls: "last" } },
-    { createdAt: "asc" },
-  ];
-
   const tasksDb = await prisma.task.findMany({
     where,
-    orderBy,
+    orderBy: [
+      { dueDate: { sort: "asc", nulls: "last" } },
+      { createdAt: "asc" },
+    ],
     select: {
       id: true,
       title: true,
