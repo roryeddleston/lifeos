@@ -10,19 +10,23 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
+// Next 15 expects a Promise for searchParams on the server:
+type SearchParams = Record<string, string | string[] | undefined>;
 
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { userId } = await auth();
   if (!userId) return null;
 
+  // ✅ Always await searchParams in this Next.js version
   const sp = (await searchParams) ?? {};
   const rawView = Array.isArray(sp.view) ? sp.view[0] : sp.view;
   const view = (rawView?.toLowerCase() ?? "all") as AllowedView;
 
+  // Date helpers
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const addDays = (n: number) => {
@@ -31,11 +35,13 @@ export default async function TasksPage({
     return d;
   };
 
+  // Base filter
   const where: Prisma.TaskWhereInput =
     view === "done"
       ? { status: "DONE", userId }
       : { userId, status: { not: "DONE" } };
 
+  // View-specific filters
   if (view === "today") where.dueDate = { gte: today, lt: addDays(1) };
   else if (view === "week") where.dueDate = { gte: today, lt: addDays(7) };
   else if (view === "nodate") where.dueDate = null;
