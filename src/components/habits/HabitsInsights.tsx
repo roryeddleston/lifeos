@@ -6,7 +6,7 @@ export default function HabitsInsights() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="p-4">
         <h3
-          className="text-sm font-medium"
+          className="text-md font-medium"
           style={{ color: "var(--twc-text)" }}
         >
           This Week

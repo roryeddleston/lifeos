@@ -127,7 +127,12 @@ export default async function HabitsPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4">
-          <h3 className="text-sm font-medium">This Week</h3>
+          <h3
+            className="text-md font-bold"
+            style={{ color: "var(--twc-muted)" }}
+          >
+            This Week
+          </h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Overall completion across all habits
           </p>
@@ -154,7 +159,12 @@ export default async function HabitsPage() {
         </Card>
 
         <Card className="p-4">
-          <h3 className="text-sm font-medium">Streaks</h3>
+          <h3
+            className="text-md font-bold"
+            style={{ color: "var(--twc-muted)" }}
+          >
+            Streaks
+          </h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Best current and best 7-day streaks
           </p>
@@ -165,7 +175,12 @@ export default async function HabitsPage() {
         </Card>
 
         <Card className="p-4">
-          <h3 className="text-sm font-medium">Last 7 Days</h3>
+          <h3
+            className="text-md font-bold"
+            style={{ color: "var(--twc-muted)" }}
+          >
+            Last 7 Days
+          </h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Daily total completions across all habits
           </p>
@@ -191,10 +206,10 @@ export default async function HabitsPage() {
       <Card className="p-0">
         <div className="px-4 pt-4 pb-2 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto_2rem] items-start sm:items-end gap-2 sm:gap-4">
           <div
-            className="text-xs font-medium"
+            className="text-md font-bold"
             style={{ color: "var(--twc-muted)" }}
           >
-            Habits
+            All habits
           </div>
           <div className="overflow-auto">
             <div className="min-w-[14rem] grid grid-cols-7 gap-2">
