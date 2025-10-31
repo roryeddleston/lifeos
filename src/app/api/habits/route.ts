@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getHabitsForUser, createHabitForUser } from "@/lib/habits";
 
 // GET /api/habits
 export async function GET() {
@@ -10,22 +10,7 @@ export async function GET() {
   }
 
   try {
-    const habits = await prisma.habit.findMany({
-      where: { userId },
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        completions: {
-          select: {
-            date: true,
-            completed: true,
-          },
-        },
-      },
-    });
-
+    const habits = await getHabitsForUser(userId);
     return NextResponse.json(habits);
   } catch (err) {
     console.error("GET /api/habits failed", err);
@@ -50,14 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const created = await prisma.habit.create({
-      data: {
-        name,
-        userId,
-      },
-      select: { id: true, name: true, createdAt: true },
-    });
-
+    const created = await createHabitForUser(userId, name);
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error("POST /api/habits failed", err);

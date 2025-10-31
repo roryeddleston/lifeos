@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getHabitWithFullCompletions } from "@/lib/habits";
 
 // GET /api/habits/[id]/history
 export async function GET(req: Request) {
@@ -17,30 +17,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    const habit = await prisma.habit.findFirst({
-      where: {
-        id,
-        userId,
-      },
-      select: {
-        id: true,
-        name: true,
-        completions: {
-          orderBy: {
-            date: "asc",
-          },
-          select: {
-            date: true,
-            completed: true,
-          },
-        },
-      },
-    });
+    const habit = await getHabitWithFullCompletions(userId, id);
 
     if (!habit) {
       return NextResponse.json({ error: "Habit not found" }, { status: 404 });
     }
 
+    // the rest is your original week-bucketing logic
     const completionsByWeek = new Map<
       string,
       { total: number; done: number }

@@ -1,8 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import {
+  getHabitByIdForUser,
+  updateHabitForUser,
+  deleteHabitForUser,
+} from "@/lib/habits";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -18,12 +21,6 @@ function jsonError(
   return NextResponse.json({ error: message, ...(extra ?? {}) }, { status });
 }
 
-function isPrismaNotFound(err: unknown): boolean {
-  return (
-    err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025"
-  );
-}
-
 /* ----------------------------- GET ----------------------------- */
 export async function GET(_req: Request, { params }: RouteParams) {
   const { userId } = await auth();
@@ -32,11 +29,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
   const { id } = await params;
 
   try {
-    const habit = await prisma.habit.findFirst({
-      where: { id, userId },
-      select: { id: true, name: true, createdAt: true },
-    });
-
+    const habit = await getHabitByIdForUser(userId, id);
     if (!habit) return jsonError("Not found", 404);
     return NextResponse.json(habit, { status: 200 });
   } catch (e: unknown) {
@@ -74,16 +67,11 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
 
   try {
-    const updated = await prisma.habit.update({
-      where: { id, userId },
-      data,
-      select: { id: true, name: true },
+    const updated = await updateHabitForUser(userId, id, {
+      name: data.name as string | undefined,
     });
     return NextResponse.json(updated, { status: 200 });
   } catch (e: unknown) {
-    if (isPrismaNotFound(e)) {
-      return jsonError("Habit not found", 404);
-    }
     console.error("PATCH /api/habits/[id] failed:", e);
     return jsonError("Failed to update habit", 500);
   }
@@ -97,14 +85,9 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   const { id } = await params;
 
   try {
-    await prisma.habit.delete({
-      where: { id, userId },
-    });
+    await deleteHabitForUser(userId, id);
     return new NextResponse(null, { status: 204 });
   } catch (e: unknown) {
-    if (isPrismaNotFound(e)) {
-      return jsonError("Habit not found", 404);
-    }
     console.error("DELETE /api/habits/[id] failed:", e);
     return jsonError("Failed to delete habit", 500);
   }

@@ -1,10 +1,11 @@
-import { prisma } from "@/lib/prisma";
+// app/habits/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
 import StreakMetric from "@/components/habits/StreakMetric";
 import SparkBars from "@/components/habits/SparkBars";
+import { getHabitsForUserInRange } from "@/lib/habits";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,18 +56,8 @@ export default async function HabitsPage() {
   const start = addDays(today, -6);
   const end = addDays(today, 1);
 
-  const habits = await prisma.habit.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      name: true,
-      completions: {
-        where: { date: { gte: start, lt: end } },
-        select: { date: true, completed: true },
-      },
-    },
-  });
+  // fetch via lib
+  const habits = await getHabitsForUserInRange(userId, start, end);
 
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = addDays(start, i);
