@@ -1,32 +1,18 @@
+// components/dashboard/RecentlyCompletedServer.tsx
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
+import { getRecentlyCompletedTasksForUser } from "@/lib/tasks";
 
 export const runtime = "nodejs";
-
-type Row = { id: string; title: string; completedAt: string };
 
 export default async function RecentlyCompletedServer() {
   noStore(); // always fetch fresh
   const { userId } = await auth();
   if (!userId) return null;
 
-  let items: Row[] = [];
+  let items = [];
   try {
-    const rows = await prisma.task.findMany({
-      where: { userId, status: "DONE" },
-      orderBy: [
-        { completedAt: { sort: "desc", nulls: "last" } },
-        { createdAt: "desc" },
-      ],
-      take: 5,
-      select: { id: true, title: true, completedAt: true, createdAt: true },
-    });
-
-    items = rows.map((r) => {
-      const when = r.completedAt ?? r.createdAt; // fallback if null
-      return { id: r.id, title: r.title, completedAt: when.toISOString() };
-    });
+    items = await getRecentlyCompletedTasksForUser(userId, 5);
   } catch {
     items = [];
   }
