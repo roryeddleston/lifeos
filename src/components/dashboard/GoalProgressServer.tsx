@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
 import ProgressFill from "@/components/anim/ProgressFill";
+import { getGoalsForUser } from "@/lib/goals";
 
 type GoalProgress = { id: string; title: string; progress: number };
 
@@ -12,14 +12,10 @@ export default async function GoalProgressServer() {
 
   let items: GoalProgress[] = [];
   try {
-    const rows = await prisma.goal.findMany({
-      where: { userId },
-      select: { id: true, title: true, targetValue: true, currentValue: true },
-      orderBy: { createdAt: "asc" },
-      take: 24, // cap work on server
-    });
+    // get all goals
+    const rows = await getGoalsForUser(userId);
 
-    items = rows
+    const mapped = rows
       .map(({ id, title, targetValue, currentValue }) => {
         const target = Math.max(0, Number(targetValue) || 0);
         const current = Math.max(0, Number(currentValue) || 0);
@@ -27,8 +23,11 @@ export default async function GoalProgressServer() {
           target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
         return { id, title, progress: pct };
       })
-      .sort((a, b) => b.progress - a.progress)
-      .slice(0, 6);
+      // original component sorted descending
+      .sort((a, b) => b.progress - a.progress);
+
+    // cap to 24 on server, then show top 6
+    items = mapped.slice(0, 6);
   } catch {
     items = [];
   }
@@ -96,10 +95,8 @@ export default async function GoalProgressServer() {
                         "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
                     }}
                   >
-                    {/* Animated fill */}
                     <ProgressFill
                       toPercent={g.progress}
-                      // slight stagger feels nice
                       duration={900}
                       delay={i * 60}
                     />
