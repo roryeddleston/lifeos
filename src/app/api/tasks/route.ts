@@ -1,41 +1,47 @@
+// app/api/tasks/route.ts
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
+import { getTasksForUser, createTaskForUser } from "@/lib/tasks";
+import { TaskStatus } from "@prisma/client";
 
 // GET /api/tasks — get tasks for current user
 export async function GET() {
-  const userId = await getUserId();
+  const { userId } = await auth();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const tasks = await prisma.task.findMany({
-    where: { userId },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  });
+  const tasks = await getTasksForUser(userId, {}, [
+    { position: "asc" },
+    { createdAt: "asc" },
+  ]);
 
   return NextResponse.json(tasks);
 }
 
 // POST /api/tasks — create task
 export async function POST(req: Request) {
-  const userId = await getUserId();
+  const { userId } = await auth();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json().catch(() => ({}));
-  const { title, description = null, status = "TODO", dueDate = null } = body;
+  const {
+    title,
+    description = null,
+    status = "TODO",
+    dueDate = null,
+  } = body ?? {};
 
-  // Choose next position (append to bottom)
-  const max = await prisma.task.aggregate({
-    where: { userId },
-    _max: { position: true },
-  });
-  const nextPos = (max._max.position ?? 0) + 1;
+  if (!title || !String(title).trim()) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
 
-  const created = await prisma.task.create({
-    data: {
-      title: (title as string)?.trim() ?? "",
-      description,
-      status,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      position: nextPos,
-      userId,
-    },
+  const created = await createTaskForUser({
+    userId,
+    title: String(title),
+    description,
+    status: status as TaskStatus,
+    dueDate,
   });
 
   return NextResponse.json(created, { status: 201 });

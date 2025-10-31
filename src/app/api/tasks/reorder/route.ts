@@ -1,7 +1,8 @@
+// app/api/tasks/reorder/route.ts
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getUserId } from "@/lib/user";
 import { z } from "zod";
+import { reorderTasksForUser } from "@/lib/tasks";
 
 const ReorderSchema = z.object({
   items: z
@@ -15,12 +16,10 @@ const ReorderSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Require auth
-  const userId = await getUserId();
+  const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Validate payload
   const parsed = ReorderSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -29,27 +28,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const items = parsed.data.items;
-  const ids = items.map((i) => i.id);
-
-  // Ownership guard: ensure all provided tasks belong to the current user
-  const owned = await prisma.task.findMany({
-    where: { id: { in: ids }, userId },
-    select: { id: true },
-  });
-  if (owned.length !== ids.length) {
+  try {
+    await reorderTasksForUser(userId, parsed.data.items);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("POST /api/tasks/reorder failed", e);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  // Apply new positions
-  await prisma.$transaction(
-    items.map(({ id, position }) =>
-      prisma.task.update({
-        where: { id },
-        data: { position },
-      })
-    )
-  );
-
-  return NextResponse.json({ ok: true });
 }

@@ -1,7 +1,7 @@
+// app/api/tasks/bulk/route.ts
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { TaskStatus } from "@prisma/client";
-import { getUserId } from "@/lib/user";
+import { createTasksBulkForUser } from "@/lib/tasks";
 
 type IncomingTask = { title: string; dueDate?: string | null };
 
@@ -48,7 +48,9 @@ function normalizeToList(body: unknown): IncomingTask[] {
 }
 
 export async function POST(req: Request) {
-  const userId = await getUserId();
+  const { userId } = await auth();
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const bodyText = await req.text().catch(() => "");
   let parsed: unknown = null;
@@ -63,36 +65,11 @@ export async function POST(req: Request) {
   }
 
   const incoming = normalizeToList(parsed);
-
-  const toCreate = incoming
-    .map(({ title, dueDate }) => ({
-      title: (title ?? "").trim(),
-      dueDate: dueDate ? new Date(dueDate) : null,
-      status: TaskStatus.TODO,
-      position: 0,
-      userId,
-    }))
-    .filter((t) => t.title.length > 0);
-
-  if (toCreate.length === 0) {
+  if (incoming.length === 0) {
     return NextResponse.json({ error: "No valid tasks" }, { status: 400 });
   }
 
-  const created = await prisma.$transaction(
-    toCreate.map((data) =>
-      prisma.task.create({
-        data,
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          dueDate: true,
-          createdAt: true,
-          position: true,
-        },
-      })
-    )
-  );
+  const created = await createTasksBulkForUser(userId, incoming);
 
   return NextResponse.json(
     { count: created.length, tasks: created },

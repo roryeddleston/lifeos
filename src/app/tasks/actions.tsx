@@ -1,17 +1,24 @@
+// app/tasks/actions.ts
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  createTaskForUser,
+  updateTaskForUser,
+  deleteTaskForUser,
+  createTasksBulkForUser,
+  reorderTasksForUser,
+} from "@/lib/tasks";
 
 const Status = z.enum(["TODO", "IN_PROGRESS", "DONE"]);
 
 const UpdateTaskSchema = z.object({
   title: z.string().min(1).optional(),
-  dueDate: z.string().min(1).nullable().optional(), // "YYYY-MM-DD" or ISO or null
+  dueDate: z.string().min(1).nullable().optional(),
   status: Status.optional(),
-  position: z.number().int().positive().optional(),
+  position: z.number().int().min(0).optional(),
 });
 
 const CreateManySchema = z.object({
@@ -29,19 +36,10 @@ const ReorderSchema = z.object({
   items: z.array(
     z.object({
       id: z.string().min(1),
-      position: z.number().int().positive(),
+      position: z.number().int().min(0),
     })
   ),
 });
-
-function toDateFromString(d?: string | null): Date | null {
-  if (!d) return null;
-  const s = d.trim();
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(`${s}T00:00:00.000Z`);
-  const ts = Date.parse(s);
-  return Number.isNaN(ts) ? null : new Date(ts);
-}
 
 export async function createTasksBulk(input: unknown) {
   const { userId } = await auth();
@@ -49,15 +47,13 @@ export async function createTasksBulk(input: unknown) {
 
   const { tasks } = CreateManySchema.parse(input);
 
-  const data = tasks.map((t) => ({
+  await createTasksBulkForUser(
     userId,
-    title: t.title,
-    status: "TODO" as const,
-    dueDate: toDateFromString(t.dueDate ?? null),
-  }));
-
-  // createMany for efficiency
-  await prisma.task.createMany({ data });
+    tasks.map((t) => ({
+      title: t.title,
+      dueDate: t.dueDate ?? null,
+    }))
+  );
 
   revalidatePath("/tasks");
   revalidatePath("/");
@@ -69,17 +65,14 @@ export async function updateTask(id: string, input: unknown) {
 
   const data = UpdateTaskSchema.parse(input);
 
-  await prisma.task.update({
-    where: { id, userId },
-    data: {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.position !== undefined ? { position: data.position } : {}),
-      ...(data.dueDate !== undefined
-        ? { dueDate: toDateFromString(data.dueDate ?? null) }
-        : {}),
-    },
+  const updated = await updateTaskForUser(userId, id, {
+    ...(data.title !== undefined ? { title: data.title } : {}),
+    ...(data.status !== undefined ? { status: data.status } : {}),
+    ...(data.position !== undefined ? { position: data.position } : {}),
+    ...(data.dueDate !== undefined ? { dueDate: data.dueDate } : {}),
   });
+
+  if (!updated) throw new Error("Not found");
 
   revalidatePath("/tasks");
   revalidatePath("/");
@@ -89,7 +82,8 @@ export async function deleteTask(id: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  await prisma.task.delete({ where: { id, userId } });
+  const ok = await deleteTaskForUser(userId, id);
+  if (!ok) throw new Error("Not found");
 
   revalidatePath("/tasks");
   revalidatePath("/");
@@ -101,14 +95,7 @@ export async function reorderTasks(input: unknown) {
 
   const { items } = ReorderSchema.parse(input);
 
-  await prisma.$transaction(
-    items.map(({ id, position }) =>
-      prisma.task.update({
-        where: { id, userId },
-        data: { position },
-      })
-    )
-  );
+  await reorderTasksForUser(userId, items);
 
   revalidatePath("/tasks");
   revalidatePath("/");
