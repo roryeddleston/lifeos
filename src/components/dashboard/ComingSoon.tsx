@@ -44,7 +44,7 @@ function FeatureCard({
 export default function ComingSoon() {
   return (
     <div className="p-3 md:p-4">
-      <h3 className="text-md font-bold" style={{ color: "var(--twc-text)" }}>
+      <h3 className="text-lg font-bold" style={{ color: "var(--twc-text)" }}>
         Coming soon
       </h3>
       <div className="grid grid-cols-1 mt-6 gap-3 md:grid-cols-2 md:gap-4">

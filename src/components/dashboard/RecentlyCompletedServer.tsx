@@ -30,7 +30,7 @@ export default async function RecentlyCompletedServer() {
       <div className="p-8">
         <div className="flex items-center justify-between">
           <h3
-            className="text-md font-bold"
+            className="text-lg font-bold"
             style={{ color: "var(--twc-text)" }}
           >
             Recently completed

@@ -46,7 +46,7 @@ export default async function GoalProgressServer() {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3
-              className="text-md font-bold"
+              className="text-lg font-bold"
               style={{ color: "var(--twc-text)" }}
             >
               Goal progression
