@@ -1,45 +1,30 @@
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import GoalsTabs from "@/components/goals/GoalsTabs";
 import QuickAddGoal from "@/components/goals/QuickAddGoal";
 import { formatDueLabel } from "@/lib/date";
+import { getGoalsForUser } from "@/lib/goals";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-type GoalRow = {
-  id: string;
-  title: string;
-  description: string | null;
-  targetValue: number;
-  currentValue: number;
-  unit: string;
-  deadline: Date | null;
-  createdAt: Date;
-};
 
 export default async function GoalsPage() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  let goalsDb: GoalRow[] = [];
+  let goalsDb: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    targetValue: number;
+    currentValue: number;
+    unit: string;
+    deadline: Date | null;
+    createdAt: Date;
+  }> = [];
+
   try {
-    goalsDb = await prisma.goal.findMany({
-      where: { userId },
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        targetValue: true,
-        currentValue: true,
-        unit: true,
-        deadline: true,
-        createdAt: true,
-      },
-    });
+    goalsDb = await getGoalsForUser(userId);
   } catch {
-    // Fail open — show empty state instead of crashing the page.
     console.warn("GoalsPage: DB unavailable, rendering empty state.");
     goalsDb = [];
   }

@@ -1,7 +1,5 @@
-// src/lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
 
-// Keep a single Prisma instance in dev (HMR-safe)
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma =

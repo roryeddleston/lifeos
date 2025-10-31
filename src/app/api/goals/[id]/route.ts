@@ -1,14 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-
-type GoalUpdatePayload = Partial<{
-  title: string;
-  unit: string;
-  deadline: Date | null;
-  targetValue: number;
-  currentValue: number;
-}>;
+import {
+  getGoalByIdForUser,
+  updateGoalForUser,
+  deleteGoalForUser,
+} from "@/lib/goals";
 
 type GoalUpdateBody = Partial<{
   title: string;
@@ -16,6 +12,7 @@ type GoalUpdateBody = Partial<{
   deadline: string | null;
   targetValue: number | string;
   currentValue: number | string;
+  description: string | null;
 }>;
 
 // PATCH /api/goals/:id — partial update
@@ -32,23 +29,23 @@ export async function PATCH(
     const { id } = await ctx.params;
     const body = (await req.json()) as GoalUpdateBody;
 
-    const existing = await prisma.goal.findUnique({
-      where: { id },
-    });
-
-    if (!existing || existing.userId !== userId) {
+    // make sure goal belongs to this user
+    const existing = await getGoalByIdForUser(userId, id);
+    if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const data: GoalUpdatePayload = {};
+    const data: Record<string, unknown> = {};
 
     if (typeof body.title === "string") data.title = body.title.trim();
     if (typeof body.unit === "string") data.unit = body.unit.trim();
+    if (typeof body.description === "string")
+      data.description = body.description.trim();
 
     if (body.deadline === null) {
       data.deadline = null;
     } else if (typeof body.deadline === "string" && body.deadline) {
-      data.deadline = new Date(body.deadline);
+      data.deadline = body.deadline;
     }
 
     if (typeof body.targetValue !== "undefined") {
@@ -70,19 +67,16 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      if (typeof data.targetValue === "number") {
-        cv = Math.max(0, Math.min(cv, data.targetValue));
-      } else {
-        cv = Math.max(0, cv);
-      }
+      // clamp to target if we know it
+      const targetToClamp =
+        typeof data.targetValue === "number"
+          ? data.targetValue
+          : existing.targetValue;
+      cv = Math.max(0, Math.min(cv, targetToClamp));
       data.currentValue = cv;
     }
 
-    const updated = await prisma.goal.update({
-      where: { id },
-      data,
-    });
-
+    const updated = await updateGoalForUser(userId, id, data);
     return NextResponse.json(updated);
   } catch (e) {
     console.error(e);
@@ -106,15 +100,13 @@ export async function DELETE(
   try {
     const { id } = await ctx.params;
 
-    const existing = await prisma.goal.findUnique({
-      where: { id },
-    });
-
-    if (!existing || existing.userId !== userId) {
+    // ensure it belongs to this user
+    const existing = await getGoalByIdForUser(userId, id);
+    if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await prisma.goal.delete({ where: { id } });
+    await deleteGoalForUser(userId, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

@@ -1,9 +1,13 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  createGoal as createGoalDb,
+  updateGoalForUser,
+  deleteGoalForUser,
+} from "@/lib/goals";
 
 const CreateGoalSchema = z.object({
   title: z.string().min(1),
@@ -15,6 +19,7 @@ const CreateGoalSchema = z.object({
     .or(z.string().length(0))
     .nullable()
     .optional(),
+  description: z.string().nullable().optional(),
 });
 
 const UpdateGoalSchema = z.object({
@@ -31,15 +36,14 @@ export async function createGoal(input: unknown) {
   if (!userId) throw new Error("Unauthorized");
 
   const data = CreateGoalSchema.parse(input);
-  await prisma.goal.create({
-    data: {
-      userId,
-      title: data.title,
-      targetValue: data.targetValue,
-      currentValue: 0,
-      unit: data.unit,
-      deadline: data.deadline ? new Date(data.deadline) : null,
-    },
+
+  await createGoalDb({
+    userId,
+    title: data.title,
+    targetValue: data.targetValue,
+    unit: data.unit,
+    deadline: data.deadline ? data.deadline : null,
+    description: data.description ?? null,
   });
 
   revalidatePath("/goals");
@@ -51,24 +55,20 @@ export async function updateGoal(id: string, input: unknown) {
   if (!userId) throw new Error("Unauthorized");
 
   const data = UpdateGoalSchema.parse(input);
-  await prisma.goal.update({
-    where: { id, userId },
-    data: {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.description !== undefined
-        ? { description: data.description }
-        : {}),
-      ...(data.targetValue !== undefined
-        ? { targetValue: data.targetValue }
-        : {}),
-      ...(data.currentValue !== undefined
-        ? { currentValue: data.currentValue }
-        : {}),
-      ...(data.unit !== undefined ? { unit: data.unit } : {}),
-      ...(data.deadline !== undefined
-        ? { deadline: data.deadline ? new Date(data.deadline) : null }
-        : {}),
-    },
+
+  await updateGoalForUser(userId, id, {
+    ...(data.title !== undefined ? { title: data.title } : {}),
+    ...(data.description !== undefined
+      ? { description: data.description }
+      : {}),
+    ...(data.targetValue !== undefined
+      ? { targetValue: data.targetValue }
+      : {}),
+    ...(data.currentValue !== undefined
+      ? { currentValue: data.currentValue }
+      : {}),
+    ...(data.unit !== undefined ? { unit: data.unit } : {}),
+    ...(data.deadline !== undefined ? { deadline: data.deadline } : {}),
   });
 
   revalidatePath("/goals");
@@ -79,7 +79,7 @@ export async function deleteGoal(id: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  await prisma.goal.delete({ where: { id, userId } });
+  await deleteGoalForUser(userId, id);
   revalidatePath("/goals");
   revalidatePath("/");
 }
