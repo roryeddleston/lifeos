@@ -210,3 +210,25 @@ export async function reorderTasksForUser(
     )
   );
 }
+
+// ------------ dashboard: recently completed ------------
+
+export async function getRecentlyCompletedTasksForUser(
+  userId: string,
+  limit = 5
+) {
+  const rows = await prisma.task.findMany({
+    where: { userId, status: "DONE" },
+    orderBy: [
+      { completedAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" },
+    ],
+    take: limit,
+    select: { id: true, title: true, completedAt: true, createdAt: true },
+  });
+
+  return rows.map((r) => {
+    const when = r.completedAt ?? r.createdAt;
+    return { id: r.id, title: r.title, completedAt: when.toISOString() };
+  });
+}

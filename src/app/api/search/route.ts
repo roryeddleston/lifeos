@@ -1,6 +1,7 @@
+// app/api/search/route.ts
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { globalSearchForUser } from "@/lib/search";
 
 export async function GET(req: Request) {
   const { userId } = await auth();
@@ -11,6 +12,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
 
+  // short-circuit here too, to avoid hitting DB for 1-char searches
   if (q.length < 2) {
     return NextResponse.json(
       { tasks: [], habits: [], goals: [] },
@@ -19,48 +21,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    const [tasks, habits, goals] = await Promise.all([
-      prisma.task.findMany({
-        where: {
-          userId,
-          title: { contains: q, mode: "insensitive" },
-        },
-        select: { id: true, title: true },
-        orderBy: [{ createdAt: "desc" }],
-        take: 5,
-      }),
-      prisma.habit.findMany({
-        where: {
-          userId,
-          name: { contains: q, mode: "insensitive" },
-        },
-        select: {
-          id: true,
-          name: true,
-          completions: {
-            select: {
-              date: true,
-              completed: true,
-            },
-          },
-        },
-        orderBy: [{ createdAt: "desc" }],
-        take: 5,
-      }),
-      prisma.goal.findMany({
-        where: {
-          userId,
-          title: { contains: q, mode: "insensitive" },
-        },
-        select: { id: true, title: true },
-        orderBy: [{ createdAt: "desc" }],
-        take: 5,
-      }),
-    ]);
-
-    return NextResponse.json({ tasks, habits, goals });
+    const results = await globalSearchForUser(userId, q, 5);
+    return NextResponse.json(results, { status: 200 });
   } catch (err) {
     console.error("Search error:", err);
+    // return empty but 200 — your client already expects that
     return NextResponse.json(
       { tasks: [], habits: [], goals: [] },
       { status: 200 }
