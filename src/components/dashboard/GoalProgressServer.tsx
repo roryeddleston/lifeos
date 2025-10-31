@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore } from "next/cache";
 import ProgressFill from "@/components/anim/ProgressFill";
-import { getGoalsForUser } from "@/lib/goals";
+import { getGoalsForProgressWidget } from "@/lib/goals";
 
 type GoalProgress = { id: string; title: string; progress: number };
 
@@ -12,8 +12,8 @@ export default async function GoalProgressServer() {
 
   let items: GoalProgress[] = [];
   try {
-    // get all goals
-    const rows = await getGoalsForUser(userId);
+    // lightweight, capped query
+    const rows = await getGoalsForProgressWidget(userId, 24);
 
     const mapped = rows
       .map(({ id, title, targetValue, currentValue }) => {
@@ -23,10 +23,10 @@ export default async function GoalProgressServer() {
           target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
         return { id, title, progress: pct };
       })
-      // original component sorted descending
+      // sort by progress descending so most completed at top
       .sort((a, b) => b.progress - a.progress);
 
-    // cap to 24 on server, then show top 6
+    // show only top 6
     items = mapped.slice(0, 6);
   } catch {
     items = [];
@@ -95,6 +95,7 @@ export default async function GoalProgressServer() {
                         "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
                     }}
                   >
+                    {/* Animated fill */}
                     <ProgressFill
                       toPercent={g.progress}
                       duration={900}

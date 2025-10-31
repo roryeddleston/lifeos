@@ -1,4 +1,3 @@
-// lib/goals.ts
 import { prisma } from "./prisma";
 
 export type CreateGoalInput = {
@@ -10,11 +9,27 @@ export type CreateGoalInput = {
   description?: string | null;
 };
 
-// list all goals for a user
+// list all goals for a user (full data, used on /goals)
 export async function getGoalsForUser(userId: string) {
   return prisma.goal.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
+  });
+}
+
+// lighter, capped query for dashboard widgets
+export async function getGoalsForProgressWidget(userId: string, limit = 24) {
+  return prisma.goal.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      title: true,
+      targetValue: true,
+      currentValue: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "asc" },
+    take: limit,
   });
 }
 
@@ -55,8 +70,8 @@ export async function updateGoalForUser(
     deadline?: string | Date | null;
   }
 ) {
-  // normalise deadline
   const { deadline, ...rest } = data;
+
   return prisma.goal.update({
     where: { id, userId },
     data: {
