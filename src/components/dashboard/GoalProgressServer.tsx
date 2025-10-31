@@ -1,11 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
+import ProgressFill from "@/components/anim/ProgressFill";
 
 type GoalProgress = { id: string; title: string; progress: number };
 
 export default async function GoalProgressServer() {
-  noStore(); // always render dynamically (no caching)
+  noStore(); // render dynamically (no caching)
   const { userId } = await auth();
   if (!userId) return null;
 
@@ -29,7 +30,6 @@ export default async function GoalProgressServer() {
       .sort((a, b) => b.progress - a.progress)
       .slice(0, 6);
   } catch {
-    // soft-fail: show empty state instead of keeping Suspense fallback forever
     items = [];
   }
 
@@ -45,7 +45,7 @@ export default async function GoalProgressServer() {
     >
       <div className="p-8">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 m">
+          <div className="min-w-0">
             <h3
               className="text-md font-bold"
               style={{ color: "var(--twc-text)" }}
@@ -79,7 +79,7 @@ export default async function GoalProgressServer() {
           </div>
         ) : (
           <ul className="mt-4 space-y-3">
-            {items.map((g) => (
+            {items.map((g, i) => (
               <li key={g.id} className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div
@@ -96,17 +96,12 @@ export default async function GoalProgressServer() {
                         "color-mix(in oklab, var(--twc-text) 8%, var(--twc-surface))",
                     }}
                   >
-                    <div
-                      className="h-2 rounded-full"
-                      style={{
-                        width: `${g.progress}%`,
-                        backgroundColor: "var(--twc-accent)",
-                      }}
-                      aria-label={`${g.progress}% complete`}
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={g.progress}
+                    {/* Animated fill */}
+                    <ProgressFill
+                      toPercent={g.progress}
+                      // slight stagger feels nice
+                      duration={900}
+                      delay={i * 60}
                     />
                   </div>
                 </div>
