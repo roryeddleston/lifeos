@@ -5,12 +5,20 @@ import { getRecentlyCompletedTasksForUser } from "@/lib/tasks";
 
 export const runtime = "nodejs";
 
+// ✅ Explicit type for strong typing & to fix the "implicitly any[]" error
+type RecentTask = {
+  id: string;
+  title: string;
+  completedAt: string;
+};
+
 export default async function RecentlyCompletedServer() {
   noStore(); // always fetch fresh
   const { userId } = await auth();
   if (!userId) return null;
 
-  let items = [];
+  // ✅ Explicitly typed
+  let items: RecentTask[] = [];
   try {
     items = await getRecentlyCompletedTasksForUser(userId, 5);
   } catch {
