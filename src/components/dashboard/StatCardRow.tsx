@@ -1,8 +1,8 @@
-// src/components/dashboard/StatCardRow.tsx
 "use client";
 
 import Card from "@/components/cards/Card";
-import { CheckSquare, ClipboardList, Target, CheckCircle2 } from "lucide-react";
+import { CheckSquare, ClipboardList, Target } from "lucide-react";
+import CountUp from "@/components/anim/CountUp";
 
 export default function StatCardRow({
   metrics,
@@ -12,39 +12,51 @@ export default function StatCardRow({
     openTasks: number;
     goalsOnTrack: number;
     goalsTotal: number;
-    tasksDone7d: number;
   };
 }) {
-  const items = [
+  const items: Array<
+    | {
+        label: string;
+        kind: "number";
+        value: number;
+        Icon: React.ComponentType<{ className?: string }>;
+      }
+    | {
+        label: string;
+        kind: "fraction";
+        value: number; // numerator
+        total: number; // denominator
+        Icon: React.ComponentType<{ className?: string }>;
+      }
+  > = [
     {
       label: "Habits completed (today)",
-      value: String(metrics.habitsToday),
+      kind: "number",
+      value: metrics.habitsToday,
       Icon: CheckSquare,
     },
     {
       label: "Open tasks",
-      value: String(metrics.openTasks),
+      kind: "number",
+      value: metrics.openTasks,
       Icon: ClipboardList,
     },
     {
       label: "Goals on track",
-      value: `${metrics.goalsOnTrack}/${metrics.goalsTotal}`,
+      kind: "fraction",
+      value: metrics.goalsOnTrack,
+      total: metrics.goalsTotal,
       Icon: Target,
-    },
-    {
-      label: "Tasks done (7d)",
-      value: String(metrics.tasksDone7d),
-      Icon: CheckCircle2,
     },
   ];
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {items.map(({ label, value, Icon }) => (
-        <Card key={label} className="p-4">
+    <div className="grid gap-3 sm:grid-cols-3">
+      {items.map((it) => (
+        <Card key={it.label} className="p-3 md:p-4">
           <div className="flex items-center gap-3">
             <div
-              className="rounded-lg p-2 shrink-0"
+              className="shrink-0 rounded-lg p-2"
               style={{
                 background:
                   "color-mix(in oklab, var(--twc-accent) 12%, transparent)",
@@ -52,17 +64,23 @@ export default function StatCardRow({
               }}
               aria-hidden
             >
-              <Icon className="w-5 h-5" />
+              <it.Icon className="h-6 w-6" />
             </div>
             <div className="flex-1">
               <div className="text-sm" style={{ color: "var(--twc-muted)" }}>
-                {label}
+                {it.label}
               </div>
               <div
-                className="mt-0.5 text-2xl font-semibold tabular-nums"
+                className="mt-0.5 text-xl font-semibold tabular-nums"
                 style={{ color: "var(--twc-text)" }}
               >
-                {value}
+                {it.kind === "number" ? (
+                  <CountUp to={it.value} duration={800} />
+                ) : (
+                  <>
+                    <CountUp to={it.value} duration={800} />/{it.total}
+                  </>
+                )}
               </div>
             </div>
           </div>
