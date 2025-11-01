@@ -1,11 +1,9 @@
-// components/dashboard/RecentlyCompletedServer.tsx
 import { auth } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore } from "next/cache";
 import { getRecentlyCompletedTasksForUser } from "@/lib/tasks";
 
 export const runtime = "nodejs";
 
-// ✅ Explicit type for strong typing & to fix the "implicitly any[]" error
 type RecentTask = {
   id: string;
   title: string;
@@ -17,7 +15,7 @@ export default async function RecentlyCompletedServer() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  // ✅ Explicitly typed
+  // explicitly typed so TS doesn’t infer any[]
   let items: RecentTask[] = [];
   try {
     items = await getRecentlyCompletedTasksForUser(userId, 5);

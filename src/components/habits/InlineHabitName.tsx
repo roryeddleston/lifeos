@@ -31,7 +31,7 @@ export default function InlineHabitName({
         await updateHabit(id, { name: trimmed });
         router.refresh();
         toast({ variant: "success", title: "Habit updated" });
-      } catch (e) {
+      } catch {
         toast({ variant: "error", title: "Rename failed" });
         setValue(name);
       } finally {

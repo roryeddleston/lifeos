@@ -1,3 +1,4 @@
+// src/components/goals/QuickAddGoal.tsx
 "use client";
 
 import { useState, useTransition } from "react";
@@ -44,7 +45,7 @@ export default function QuickAddGoal() {
         setDeadline("");
         router.refresh();
         toast({ variant: "success", title: "Goal added" });
-      } catch (e) {
+      } catch {
         toast({ variant: "error", title: "Add goal failed" });
       }
     });

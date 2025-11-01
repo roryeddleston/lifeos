@@ -1,3 +1,4 @@
+// src/components/tasks/InlineTitle.tsx
 "use client";
 
 import { useState, useRef } from "react";
@@ -6,13 +7,12 @@ const capSentence = (str: string) =>
   str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 
 export default function InlineTitle({
-  // id is intentionally unused here; prefix to satisfy ESLint
-  id: _id,
+  // we intentionally do NOT pull `id` out here to avoid ESLint unused-var
   title,
   done,
   onChange,
 }: {
-  id: string;
+  id: string; // still part of the public props shape
   title: string;
   done: boolean;
   onChange?: (next: string) => Promise<boolean> | boolean;
@@ -44,10 +44,12 @@ export default function InlineTitle({
             : "var(--twc-text)",
           textDecoration: "none",
         }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.textDecoration = "underline")
-        }
-        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.textDecoration = "underline";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.textDecoration = "none";
+        }}
         aria-label="Edit title"
         title="Edit title"
       >

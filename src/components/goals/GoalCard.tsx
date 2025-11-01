@@ -1,3 +1,4 @@
+// src/components/goals/GoalCard.tsx
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -96,7 +97,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
           ...(patch.deadline !== undefined ? { deadline: patch.deadline } : {}),
         });
         router.refresh();
-      } catch (e) {
+      } catch {
         toast({ variant: "error", title: "Update failed" });
         setLocal(goal); // rollback simple
       } finally {
@@ -104,8 +105,6 @@ export default function GoalCard({ goal }: { goal: Goal }) {
       }
     });
   }
-
-  const step = 1;
 
   function adjust(delta: number) {
     const next = clampToRange(local.currentValue + delta);
@@ -154,7 +153,7 @@ export default function GoalCard({ goal }: { goal: Goal }) {
     : "width 2000ms cubic-bezier(0.22, 1, 0.36, 1)";
 
   return (
-    <div className="flex flex-col gap-4 md:grid md:grid-cols:[minmax(0,1fr)_auto] md:items-center">
+    <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <InlineGoalTitle
