@@ -8,8 +8,6 @@ import ComingSoon from "@/components/dashboard/ComingSoon";
 
 export const runtime = "nodejs";
 
-export const dynamic = "force-dynamic";
-
 export default async function HomePage() {
   const { userId } = await auth();
   if (!userId) return null;

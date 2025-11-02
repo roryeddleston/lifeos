@@ -1,22 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/api/public(.*)"]);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
-  }
-
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.redirect(new URL("/sign-in", req.url));
-  }
-
-  return NextResponse.next();
-});
+export default clerkMiddleware();
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*|favicon.ico).*)", "/(api|trpc)(.*)"],
+  matcher: [
+    // protect app pages only, not everything
+    "/((?!_next|.*\\..*|favicon.ico|sign-in|sign-up).*)",
+  ],
 };

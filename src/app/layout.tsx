@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "@/components/layout/AppShell";
 import { montserrat } from "@/styles/fonts";
-import Providers from "./providers";
-
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  ClerkLoaded,
-  ClerkLoading,
-} from "@clerk/nextjs";
+import { ToastProvider } from "@/components/ui/Toaster";
+import ThemeProvider from "@/components/theme/ThemeProvider";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: "Life OS",
@@ -29,19 +22,9 @@ export default function RootLayout({
         <body
           className={`${montserrat.className} min-h-screen bg-[var(--bg)] text-[var(--text)]`}
         >
-          <ClerkLoaded>
-            <SignedIn>
-              <Providers>
-                <AppShell>{children}</AppShell>
-              </Providers>
-            </SignedIn>
-            <SignedOut>{children}</SignedOut>
-          </ClerkLoaded>
-          <ClerkLoading>
-            <div className="flex justify-center items-center min-h-screen">
-              <p>Loading...</p>
-            </div>
-          </ClerkLoading>
+          <ThemeProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
