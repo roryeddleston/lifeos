@@ -4,7 +4,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
-import { updateHabit } from "@/app/habits/actions";
+import { updateHabit } from "@/app/(app)/habits/actions";
 
 export default function InlineHabitName({
   id,

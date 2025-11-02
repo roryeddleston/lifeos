@@ -21,7 +21,11 @@ import InlineTitle from "./InlineTitle";
 import InlineDueDate from "./InlineDueDate";
 import { GripVertical, CheckCircle2, ClipboardList } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
-import { deleteTask, reorderTasks, updateTask } from "@/app/tasks/actions";
+import {
+  deleteTask,
+  reorderTasks,
+  updateTask,
+} from "@/app/(app)/tasks/actions";
 
 type TaskItem = {
   id: string;

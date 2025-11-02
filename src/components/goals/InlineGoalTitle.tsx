@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
-import { updateGoal } from "@/app/goals/actions";
+import { updateGoal } from "@/app/(app)/goals/actions";
 
 function capitalizeFirst(s: string) {
   if (!s) return s;

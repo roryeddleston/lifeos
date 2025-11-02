@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { parseQuickDate } from "@/lib/quickdate";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
-import { createTasksBulk } from "@/app/tasks/actions";
+import { createTasksBulk } from "@/app/(app)/tasks/actions";
 
 function todayLocalISODate(): string {
   const d = new Date();

@@ -4,7 +4,7 @@
 import { useState, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatDueLabel } from "@/lib/date";
-import { updateTask } from "@/app/tasks/actions";
+import { updateTask } from "@/app/(app)/tasks/actions";
 
 export default function InlineDueDate({
   id,

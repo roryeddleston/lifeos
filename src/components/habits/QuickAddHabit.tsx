@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toaster";
 import AddActionButton from "@/components/ui/AddActionButton";
-import { createHabit } from "@/app/habits/actions";
+import { createHabit } from "@/app/(app)/habits/actions";
 
 export default function QuickAddHabit() {
   const [name, setName] = useState("");

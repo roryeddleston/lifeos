@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/Toaster";
 import InlineGoalTitle from "./InlineGoalTitle";
 import { formatDateGB, formatDueLabel } from "@/lib/date";
 import TrashButton from "@/components/ui/TrashButton";
-import { updateGoal, deleteGoal } from "@/app/goals/actions";
+import { updateGoal, deleteGoal } from "@/app/(app)/goals/actions";
 
 type Goal = {
   id: string;
