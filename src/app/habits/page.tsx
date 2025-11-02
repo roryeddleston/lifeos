@@ -82,6 +82,7 @@ export default async function HabitsPage() {
       completed: map.get(d.iso) ?? false,
     }));
 
+    // current streak from the right
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
@@ -125,14 +126,10 @@ export default async function HabitsPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Habits</h2>
       </header>
 
+      {/* top stats */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4">
-          <h3
-            className="text-md font-bold"
-            style={{ color: "var(--twc-muted)" }}
-          >
-            This Week
-          </h3>
+          <h3 className="text-md font-bold">This Week</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Overall completion across all habits
           </p>
@@ -159,12 +156,7 @@ export default async function HabitsPage() {
         </Card>
 
         <Card className="p-4">
-          <h3
-            className="text-md font-bold"
-            style={{ color: "var(--twc-muted)" }}
-          >
-            Streaks
-          </h3>
+          <h3 className="text-md font-bold">Streaks</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Best current and best 7-day streaks
           </p>
@@ -175,12 +167,7 @@ export default async function HabitsPage() {
         </Card>
 
         <Card className="p-4">
-          <h3
-            className="text-md font-bold"
-            style={{ color: "var(--twc-muted)" }}
-          >
-            Last 7 Days
-          </h3>
+          <h3 className="text-md font-bold">Last 7 Days</h3>
           <p className="mt-1 text-sm" style={{ color: "var(--twc-muted)" }}>
             Daily total completions across all habits
           </p>
@@ -203,72 +190,77 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
+      {/* main list */}
       <Card className="p-0">
-        <div className="px-4 pt-4 pb-2 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto_2rem] items-start sm:items-end gap-2 sm:gap-4">
-          <div
-            className="text-md font-bold"
-            style={{ color: "var(--twc-muted)" }}
-          >
-            All habits
-          </div>
-          <div className="overflow-auto">
-            <div className="min-w-[14rem] grid grid-cols-7 gap-2">
-              {days.map((d) => (
-                <div
-                  key={d.iso}
-                  className={`w-8 h-5 text-[11px] leading-5 text-center ${
-                    d.isToday ? "font-medium" : ""
-                  }`}
-                  aria-label={d.iso}
-                  title={d.iso}
-                  style={{
-                    color: d.isToday
-                      ? "var(--twc-text)"
-                      : "color-mix(in oklab, var(--twc-text) 45%, transparent)",
-                  }}
-                >
-                  {d.label}
-                </div>
-              ))}
+        {/* ✅ shared scroll container so header & rows scroll together */}
+        <div className="overflow-auto">
+          {/* ✅ header row: match HabitCard */}
+          <div className="px-4 pt-4 pb-3 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto] items-start sm:items-end gap-2 sm:gap-4">
+            <div className="text-md font-bold">All habits</div>
+            <div className="overflow-auto">
+              {/* ✅ match HabitCard: min-w-[16rem], 7 days + 1 empty cell */}
+              <div className="min-w-[16rem] grid grid-cols-8 gap-2">
+                {days.map((d) => (
+                  <div
+                    key={d.iso}
+                    className={`h-8 flex items-center justify-center text-[11px] text-center ${
+                      d.isToday ? "font-medium" : ""
+                    }`}
+                    aria-label={d.iso}
+                    title={d.iso}
+                    style={{
+                      color: d.isToday
+                        ? "var(--twc-text)"
+                        : "color-mix(in oklab, var(--twc-text) 45%, transparent)",
+                    }}
+                  >
+                    {d.label}
+                  </div>
+                ))}
+                {/* spacer to line up with TrashButton in HabitCard */}
+                <div className="w-8 h-8" aria-hidden />
+              </div>
             </div>
           </div>
-          <div className="w-8" aria-hidden />
-        </div>
 
-        {view.length === 0 ? (
-          <div className="px-4 py-16">
-            <div
-              className="mx-auto max-w-md rounded-lg px-6 py-8 text-center"
-              style={{
-                border: "1px solid var(--twc-border)",
-                background:
-                  "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
-              }}
-            >
-              <h3 className="text-sm font-medium">No habits yet</h3>
-              <p className="mt-2 text-sm" style={{ color: "var(--twc-muted)" }}>
-                Add your first habit below to start building streaks.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <ul>
-            {view.map((h: HabitView, i: number) => (
-              <li
-                key={h.id}
-                className="px-4 py-3"
+          {view.length === 0 ? (
+            <div className="px-4 py-16">
+              <div
+                className="mx-auto max-w-md rounded-lg px-6 py-8 text-center"
                 style={{
-                  borderBottom:
-                    i === view.length - 1
-                      ? "0"
-                      : "1px solid color-mix(in oklab, var(--twc-border) 40%, transparent)",
+                  border: "1px solid var(--twc-border)",
+                  background:
+                    "color-mix(in oklab, var(--twc-bg) 85%, transparent)",
                 }}
               >
-                <HabitCard habit={h} />
-              </li>
-            ))}
-          </ul>
-        )}
+                <h3 className="text-sm font-medium">No habits yet</h3>
+                <p
+                  className="mt-2 text-sm"
+                  style={{ color: "var(--twc-muted)" }}
+                >
+                  Add your first habit below to start building streaks.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ul>
+              {view.map((h: HabitView, i: number) => (
+                <li
+                  key={h.id}
+                  className="px-4 py-3"
+                  style={{
+                    borderBottom:
+                      i === view.length - 1
+                        ? "0"
+                        : "1px solid color-mix(in oklab, var(--twc-border) 40%, transparent)",
+                  }}
+                >
+                  <HabitCard habit={h} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Card>
 
       <QuickAddHabit />
