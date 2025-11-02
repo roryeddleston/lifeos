@@ -161,71 +161,74 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
           </button>
         </div>
 
-        {/* Right: checkboxes and trash icon */}
-        <div className="overflow-auto py-3 md:py-0">
-          <div className="min-w-[16rem] grid grid-cols-8 gap-2">
-            {tiles.map((d) => {
-              const active = d.completed;
-              const isToday = d.iso === todayIso;
-              return (
-                <button
-                  key={d.iso}
-                  type="button"
-                  onClick={() => toggleDay(d.iso, !d.completed)}
-                  className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
-                  style={{
-                    border: `1px solid ${
-                      active
-                        ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
-                        : "var(--twc-border)"
-                    }`,
-                    backgroundColor: active
-                      ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
-                      : "var(--twc-surface)",
-                    boxShadow: isToday
-                      ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
-                      : undefined,
-                  }}
-                  aria-pressed={active}
-                  aria-label={`${d.iso} ${
-                    active ? "completed" : "not completed"
-                  }`}
-                  title={d.iso}
-                  disabled={isPending}
-                >
-                  {active ? (
-                    <Check
-                      className="h-4 w-4"
-                      style={{ color: "var(--twc-accent)" }}
-                    />
-                  ) : (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ backgroundColor: "var(--twc-border)" }}
-                    />
-                  )}
-                  {isToday && (
-                    <span
-                      className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
-                      style={{
-                        backgroundColor:
-                          "color-mix(in oklab, var(--twc-text) 35%, transparent)",
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-
-            {/* Trash icon as last column */}
-            <div className="w-8 flex items-center justify-center">
-              <TrashButton
-                onClick={handleDelete}
-                disabled={deleting}
-                aria-label="Delete habit"
-                title="Delete habit"
-              />
+        {/* Right: 7 days scrollable + fixed trash (to match header) */}
+        <div className="flex items-center gap-2 py-3 md:py-0">
+          {/* scrollable 7 days */}
+          <div className="overflow-auto">
+            <div className="min-w-[14rem] grid grid-cols-7 gap-2">
+              {tiles.map((d) => {
+                const active = d.completed;
+                const isToday = d.iso === todayIso;
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    onClick={() => toggleDay(d.iso, !d.completed)}
+                    className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
+                    style={{
+                      border: `1px solid ${
+                        active
+                          ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
+                          : "var(--twc-border)"
+                      }`,
+                      backgroundColor: active
+                        ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
+                        : "var(--twc-surface)",
+                      boxShadow: isToday
+                        ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
+                        : undefined,
+                    }}
+                    aria-pressed={active}
+                    aria-label={`${d.iso} ${
+                      active ? "completed" : "not completed"
+                    }`}
+                    title={d.iso}
+                    disabled={isPending}
+                  >
+                    {active ? (
+                      <Check
+                        className="h-4 w-4"
+                        style={{ color: "var(--twc-accent)" }}
+                      />
+                    ) : (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ backgroundColor: "var(--twc-border)" }}
+                      />
+                    )}
+                    {isToday && (
+                      <span
+                        className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in oklab, var(--twc-text) 35%, transparent)",
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          {/* fixed trash column, same width as header's spacer */}
+          <div className="w-8 flex items-center justify-center shrink-0">
+            <TrashButton
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete habit"
+              title="Delete habit"
+            />
           </div>
         </div>
       </div>
