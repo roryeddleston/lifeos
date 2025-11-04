@@ -4,7 +4,6 @@ import QuickAddGoal from "@/components/goals/QuickAddGoal";
 import { formatDueLabel } from "@/lib/date";
 import { getGoalsForUser } from "@/lib/goals";
 
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function GoalsPage() {

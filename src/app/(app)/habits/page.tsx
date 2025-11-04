@@ -1,4 +1,3 @@
-// app/habits/page.tsx
 import { auth } from "@clerk/nextjs/server";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
@@ -7,7 +6,6 @@ import StreakMetric from "@/components/habits/StreakMetric";
 import SparkBars from "@/components/habits/SparkBars";
 import { getHabitsForUserInRange } from "@/lib/habits";
 
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function startOfDayUTC(d = new Date()) {

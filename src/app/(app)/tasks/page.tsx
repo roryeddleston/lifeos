@@ -7,7 +7,6 @@ import QuickAdd from "@/components/tasks/QuickAddTask";
 import Filters from "@/components/tasks/Filters";
 import { getTasksForUser } from "@/lib/tasks";
 
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type AllowedView = "all" | "today" | "week" | "nodate" | "done";
