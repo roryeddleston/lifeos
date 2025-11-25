@@ -14,7 +14,8 @@ type Ctx = {
 const PageHeaderContext = createContext<Ctx | null>(null);
 
 export function PageHeaderProvider({ children }: { children: ReactNode }) {
-  const [title, setTitle] = useState("Dashboard");
+  const [title, setTitle] = useState("");
+
   const [action, setAction] = useState<Action>(null);
 
   const value = useMemo(
@@ -35,7 +36,6 @@ export function usePageHeader() {
   return ctx;
 }
 
-/** Helper component you can drop into any page to set title/action */
 export function PageHeader({
   title,
   action,
@@ -48,8 +48,6 @@ export function PageHeader({
     setTitle(title);
     setAction(action ?? null);
     return () => {
-      // optional: reset on unmount
-      setTitle("Dashboard");
       setAction(null);
     };
   }, [title, action, setTitle, setAction]);
