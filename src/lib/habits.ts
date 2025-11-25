@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
+import { Prisma } from "@prisma/client";
 
-// basic list (used by /api/habits and maybe dashboard)
 export async function getHabitsForUser(userId: string) {
   return prisma.habit.findMany({
     where: { userId },
@@ -123,47 +123,64 @@ export async function toggleHabitRecordForUser(
   date: Date,
   explicit?: boolean
 ) {
-  // ensure habit belongs to user
-  const habit = await prisma.habit.findFirst({
-    where: { id: habitId, userId },
-    select: { id: true },
-  });
-  if (!habit) {
-    throw new Error("Habit not found");
+  // If explicit is provided, we don't need to read the existing row.
+  const useExplicit = typeof explicit === "boolean";
+
+  try {
+    let nextCompleted: boolean;
+
+    if (useExplicit) {
+      nextCompleted = explicit as boolean;
+    } else {
+      const existing = await prisma.habitRecord.findUnique({
+        where: {
+          habitId_date: {
+            habitId,
+            date,
+          },
+        },
+        select: {
+          completed: true,
+        },
+      });
+
+      nextCompleted = !Boolean(existing?.completed);
+    }
+
+    return prisma.habitRecord.upsert({
+      where: {
+        habitId_date: {
+          habitId,
+          date,
+        },
+      },
+      update: {
+        completed: nextCompleted,
+      },
+      create: {
+        habitId,
+        date,
+        completed: nextCompleted,
+      },
+      select: {
+        id: true,
+        habitId: true,
+        date: true,
+        completed: true,
+      },
+    });
+  } catch (err: unknown) {
+    // If the habit doesn't exist or doesn't belong to the user,
+    // the foreign key constraint will fail.
+    // We keep the same external error message as before.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      (err.code === "P2003" || err.code === "P2025")
+    ) {
+      // P2003: foreign key constraint failed
+      // P2025: record not found
+      throw new Error("Habit not found");
+    }
+    throw err;
   }
-
-  const existing = await prisma.habitRecord.findUnique({
-    where: {
-      habitId_date: {
-        habitId,
-        date,
-      },
-    },
-  });
-
-  const nextCompleted =
-    typeof explicit === "boolean" ? explicit : !Boolean(existing?.completed);
-
-  return prisma.habitRecord.upsert({
-    where: {
-      habitId_date: {
-        habitId,
-        date,
-      },
-    },
-    update: {
-      completed: nextCompleted,
-    },
-    create: {
-      habitId,
-      date,
-      completed: nextCompleted,
-    },
-    select: {
-      id: true,
-      habitId: true,
-      date: true,
-      completed: true,
-    },
-  });
 }
