@@ -149,7 +149,7 @@ export default function TopbarMobile({ title }: { title: string }) {
               >
                 <Link
                   href={item.href}
-                  className="block w-full px-4 py-3 text-base"
+                  className="block w-full px-4 py-4 text-md"
                   style={{
                     color:
                       "color-mix(in oklab, var(--twc-text) 90%, transparent)",
