@@ -27,7 +27,7 @@ export default async function HomePage() {
           />
         }
       >
-        <StatCardsServer />
+        <StatCardsServer userId={userId} />
       </Suspense>
 
       {/* Chart-sized skeleton */}
@@ -42,7 +42,7 @@ export default async function HomePage() {
           />
         }
       >
-        <GoalProgressServer />
+        <GoalProgressServer userId={userId} />
       </Suspense>
 
       {/* List-sized skeleton */}
@@ -57,7 +57,7 @@ export default async function HomePage() {
           />
         }
       >
-        <RecentlyCompletedServer />
+        <RecentlyCompletedServer userId={userId} />
       </Suspense>
 
       <ComingSoon />

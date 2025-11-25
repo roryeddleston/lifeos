@@ -1,4 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore } from "next/cache";
 import { getRecentlyCompletedTasksForUser } from "@/lib/tasks";
 
@@ -10,9 +9,12 @@ type RecentTask = {
   completedAt: string;
 };
 
-export default async function RecentlyCompletedServer() {
+export default async function RecentlyCompletedServer({
+  userId,
+}: {
+  userId: string;
+}) {
   noStore(); // always fetch fresh
-  const { userId } = await auth();
   if (!userId) return null;
 
   // explicitly typed so TS doesn’t infer any[]

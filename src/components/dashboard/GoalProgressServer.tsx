@@ -1,13 +1,15 @@
-import { auth } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore } from "next/cache";
 import ProgressFill from "@/components/anim/ProgressFill";
 import { getGoalsForProgressWidget } from "@/lib/goals";
 
 type GoalProgress = { id: string; title: string; progress: number };
 
-export default async function GoalProgressServer() {
+export default async function GoalProgressServer({
+  userId,
+}: {
+  userId: string;
+}) {
   noStore(); // render dynamically (no caching)
-  const { userId } = await auth();
   if (!userId) return null;
 
   let items: GoalProgress[] = [];
