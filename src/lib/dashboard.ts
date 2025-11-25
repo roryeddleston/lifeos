@@ -1,14 +1,7 @@
-// lib/dashboard.ts
 import { prisma } from "./prisma";
+import { unstable_cache } from "next/cache";
 
-/**
- * Load dashboard metrics for a single user in one go.
- * Returns zeros on error.
- *
- * NOTE: using Europe/London so your "today" matches what you see in the UI.
- * If you prefer strict UTC, change the timezone strings back to 'UTC'.
- */
-export async function getDashboardMetrics(userId: string) {
+async function _getDashboardMetrics(userId: string) {
   let habitsToday = 0;
   let openTasks = 0;
   let goalsTotal = 0;
@@ -16,7 +9,7 @@ export async function getDashboardMetrics(userId: string) {
 
   try {
     // single raw query to grab the 3 easy counts
-    const [row] = await prisma.$queryRaw<
+    const metricsPromise = prisma.$queryRaw<
       { habits_today: bigint; open_tasks: bigint; goals_total: bigint }[]
     >`
       SELECT
@@ -42,14 +35,8 @@ export async function getDashboardMetrics(userId: string) {
         ) AS goals_total
     `;
 
-    if (row) {
-      habitsToday = Number(row.habits_today ?? 0);
-      openTasks = Number(row.open_tasks ?? 0);
-      goalsTotal = Number(row.goals_total ?? 0);
-    }
-
     // now we fetch all goals to work out "on track"
-    const goals = await prisma.$queryRaw<
+    const goalsPromise = prisma.$queryRaw<
       {
         currentValue: number | null;
         targetValue: number | null;
@@ -61,6 +48,19 @@ export async function getDashboardMetrics(userId: string) {
       FROM "Goal"
       WHERE "userId" = ${userId}
     `;
+
+    const [metricsRows, goals] = await Promise.all([
+      metricsPromise,
+      goalsPromise,
+    ]);
+
+    const row = metricsRows[0];
+
+    if (row) {
+      habitsToday = Number(row.habits_today ?? 0);
+      openTasks = Number(row.open_tasks ?? 0);
+      goalsTotal = Number(row.goals_total ?? 0);
+    }
 
     const now = new Date();
 
@@ -110,3 +110,17 @@ export async function getDashboardMetrics(userId: string) {
     goalsOnTrack,
   };
 }
+
+/**
+ * Wrapped in unstable_cache for a small perf boost:
+ * - results are cached per userId
+ * - revalidated every 30 seconds
+ */
+
+export const getDashboardMetrics = unstable_cache(
+  (userId: string) => _getDashboardMetrics(userId),
+  ["dashboard-metrics"],
+  {
+    revalidate: 30,
+  }
+);
