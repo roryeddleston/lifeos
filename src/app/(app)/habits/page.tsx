@@ -54,7 +54,6 @@ export default async function HabitsPage() {
   const start = addDays(today, -6);
   const end = addDays(today, 1);
 
-  // fetch via lib
   const habits = await getHabitsForUserInRange(userId, start, end);
 
   const days = Array.from({ length: 7 }).map((_, i) => {
@@ -80,7 +79,6 @@ export default async function HabitsPage() {
       completed: map.get(d.iso) ?? false,
     }));
 
-    // current streak from the right
     let streak = 0;
     for (let i = timeline.length - 1; i >= 0; i--) {
       if (timeline[i].completed) streak++;
@@ -124,7 +122,6 @@ export default async function HabitsPage() {
         <h2 className="text-2xl font-semibold tracking-tight">Habits</h2>
       </header>
 
-      {/* top stats */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4">
           <h3 className="text-md font-bold">This Week</h3>
@@ -188,16 +185,12 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
-      {/* main list */}
       <Card className="p-0">
-        {/* ✅ shared scroll container so header & rows scroll together */}
         <div className="overflow-auto">
-          {/* ✅ header row: match HabitCard */}
           <div className="px-4 pt-4 pb-3 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto] items-start sm:items-end gap-2 sm:gap-4">
             <div className="text-md font-bold">All habits</div>
             <div className="overflow-auto">
-              {/* ✅ match HabitCard: min-w-[16rem], 7 days + 1 empty cell */}
-              <div className="min-w-[16rem] grid grid-cols-8 gap-2">
+              <div className="min-w-[14rem] sm:min-w-[16rem] grid grid-cols-8 gap-1 sm:gap-2">
                 {days.map((d) => (
                   <div
                     key={d.iso}
@@ -215,7 +208,6 @@ export default async function HabitsPage() {
                     {d.label}
                   </div>
                 ))}
-                {/* spacer to line up with TrashButton in HabitCard */}
                 <div className="w-8 h-8" aria-hidden />
               </div>
             </div>
