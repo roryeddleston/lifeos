@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toaster";
 import InlineHabitName from "./InlineHabitName";
 import HabitHistory from "./HabitHistory";
@@ -123,117 +123,208 @@ export default function HabitCard({ habit }: { habit: HabitView }) {
 
   return (
     <div className="space-y-2">
-      {/* Mobile: stack. Desktop: two columns. */}
+      {/* Desktop/tablet: 2 columns. Mobile: card layout (name -> tiles -> actions). */}
       <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
-        {/* Top row: name (+ streak on sm+) */}
-        <div className="min-w-0 flex items-center gap-2">
-          <InlineHabitName id={habit.id} name={habit.name} />
+        {/* Left: name + (desktop-only) streak + (desktop-only) history */}
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <InlineHabitName id={habit.id} name={habit.name} />
 
-          {habit.streak >= 2 && (
-            <span
-              className="hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-              title={`${habit.streak} day streak`}
+            {/* Streak hidden on mobile */}
+            {habit.streak >= 2 && (
+              <span
+                className="hidden sm:inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                title={`${habit.streak} day streak`}
+                style={{
+                  backgroundColor:
+                    "color-mix(in oklab, var(--twc-accent) 12%, var(--twc-surface))",
+                  color: "var(--twc-text)",
+                  border: "1px solid var(--twc-border)",
+                }}
+              >
+                {habit.streak} day streak
+              </span>
+            )}
+
+            {/* Desktop history stays near the title */}
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="ml-1 hidden sm:inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
+              title="Show history"
               style={{
-                backgroundColor:
-                  "color-mix(in oklab, var(--twc-accent) 12%, var(--twc-surface))",
-                color: "var(--twc-text)",
                 border: "1px solid var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+                color: "var(--twc-text)",
               }}
             >
-              {habit.streak} day streak
-            </span>
-          )}
+              {showHistory ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+              History
+            </button>
+          </div>
+
+          {/* Mobile tiles row (7 across, slightly smaller + tighter gap so it fits) */}
+          <div className="sm:hidden mt-2">
+            <div className="grid grid-cols-7 gap-1">
+              {tiles.map((d) => {
+                const active = d.completed;
+                const isToday = d.iso === todayIso;
+
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    onClick={() => toggleDay(d.iso, !d.completed)}
+                    className="group relative inline-flex h-7 w-7 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
+                    style={{
+                      border: `1px solid ${
+                        active
+                          ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
+                          : "var(--twc-border)"
+                      }`,
+                      backgroundColor: active
+                        ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
+                        : "var(--twc-surface)",
+                      boxShadow: isToday
+                        ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
+                        : undefined,
+                    }}
+                    aria-pressed={active}
+                    aria-label={`${d.iso} ${
+                      active ? "completed" : "not completed"
+                    }`}
+                    title={d.iso}
+                    disabled={isPending}
+                  >
+                    {active ? (
+                      <Check
+                        className="h-4 w-4"
+                        style={{ color: "var(--twc-accent)" }}
+                      />
+                    ) : (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ backgroundColor: "var(--twc-border)" }}
+                      />
+                    )}
+
+                    {isToday && (
+                      <span
+                        className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in oklab, var(--twc-text) 35%, transparent)",
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mobile actions row (History left, Delete right) */}
+          <div className="sm:hidden mt-2 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-xs transition-colors cursor-pointer hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
+              title="Show history"
+              style={{
+                border: "1px solid var(--twc-border)",
+                backgroundColor: "var(--twc-surface)",
+                color: "var(--twc-text)",
+              }}
+            >
+              {showHistory ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+              History
+            </button>
+
+            <TrashButton
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete habit"
+              title="Delete habit"
+            />
+          </div>
         </div>
 
-        {/* Actions + 7-day grid row (on mobile sits beneath title) */}
-        <div className="flex items-center justify-between gap-2 sm:justify-start">
-          {/* Left: History button */}
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer hover:border-[var(--twc-accent)] hover:bg-[color-mix(in_oklab,var(--twc-surface)_95%,var(--twc-accent)_5%)]"
-            title="Show history"
-            style={{
-              border: "1px solid var(--twc-border)",
-              backgroundColor: "var(--twc-surface)",
-              color: "var(--twc-text)",
-            }}
-          >
-            {showHistory ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-            History
-          </button>
+        {/* Desktop/table: 7-day grid + fixed trash (aligned with header) */}
+        <div className="hidden sm:flex items-center gap-2">
+          <div className="overflow-auto">
+            <div className="min-w-[16rem] grid grid-cols-7 gap-2">
+              {tiles.map((d) => {
+                const active = d.completed;
+                const isToday = d.iso === todayIso;
 
-          {/* Right: day tiles + trash */}
-          <div className="flex items-center gap-2">
-            <div className="overflow-auto">
-              <div className="min-w-[14rem] sm:min-w-[16rem] grid grid-cols-7 gap-1 sm:gap-2">
-                {tiles.map((d) => {
-                  const active = d.completed;
-                  const isToday = d.iso === todayIso;
-                  return (
-                    <button
-                      key={d.iso}
-                      type="button"
-                      onClick={() => toggleDay(d.iso, !d.completed)}
-                      className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
-                      style={{
-                        border: `1px solid ${
-                          active
-                            ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
-                            : "var(--twc-border)"
-                        }`,
-                        backgroundColor: active
-                          ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
-                          : "var(--twc-surface)",
-                        boxShadow: isToday
-                          ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
-                          : undefined,
-                      }}
-                      aria-pressed={active}
-                      aria-label={`${d.iso} ${
-                        active ? "completed" : "not completed"
-                      }`}
-                      title={d.iso}
-                      disabled={isPending}
-                    >
-                      {active ? (
-                        <Check
-                          className="h-4 w-4"
-                          style={{ color: "var(--twc-accent)" }}
-                        />
-                      ) : (
-                        <span
-                          className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ backgroundColor: "var(--twc-border)" }}
-                        />
-                      )}
-                      {isToday && (
-                        <span
-                          className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
-                          style={{
-                            backgroundColor:
-                              "color-mix(in oklab, var(--twc-text) 35%, transparent)",
-                          }}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    onClick={() => toggleDay(d.iso, !d.completed)}
+                    className="group relative inline-flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer outline-none focus-visible:ring-2"
+                    style={{
+                      border: `1px solid ${
+                        active
+                          ? "color-mix(in oklab, var(--twc-accent) 18%, var(--twc-border))"
+                          : "var(--twc-border)"
+                      }`,
+                      backgroundColor: active
+                        ? "color-mix(in oklab, var(--twc-accent) 6%, var(--twc-surface))"
+                        : "var(--twc-surface)",
+                      boxShadow: isToday
+                        ? "inset 0 0 0 1px color-mix(in oklab, var(--twc-text) 14%, transparent)"
+                        : undefined,
+                    }}
+                    aria-pressed={active}
+                    aria-label={`${d.iso} ${
+                      active ? "completed" : "not completed"
+                    }`}
+                    title={d.iso}
+                    disabled={isPending}
+                  >
+                    {active ? (
+                      <Check
+                        className="h-4 w-4"
+                        style={{ color: "var(--twc-accent)" }}
+                      />
+                    ) : (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ backgroundColor: "var(--twc-border)" }}
+                      />
+                    )}
 
-            <div className="w-8 flex items-center justify-center shrink-0">
-              <TrashButton
-                onClick={handleDelete}
-                disabled={deleting}
-                aria-label="Delete habit"
-                title="Delete habit"
-              />
+                    {isToday && (
+                      <span
+                        className="pointer-events-none absolute -top-1 right-1 h-1.5 w-1.5 rounded-full"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in oklab, var(--twc-text) 35%, transparent)",
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          <div className="w-8 flex items-center justify-center shrink-0">
+            <TrashButton
+              onClick={handleDelete}
+              disabled={deleting}
+              aria-label="Delete habit"
+              title="Delete habit"
+            />
           </div>
         </div>
       </div>

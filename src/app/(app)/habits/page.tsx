@@ -102,6 +102,7 @@ export default async function HabitsPage() {
     (m: number, h: HabitView) => Math.max(m, h.streak),
     0
   );
+
   const bestStreakMax = view.reduce(
     (m: number, h: HabitView) =>
       Math.max(m, maxRun(h.timeline.map((t: TimelineItem) => t.completed))),
@@ -185,12 +186,16 @@ export default async function HabitsPage() {
         </Card>
       </div>
 
+      {/* Main list */}
       <Card className="p-0">
-        <div className="overflow-auto">
-          <div className="px-4 pt-4 pb-3 flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto] items-start sm:items-end gap-2 sm:gap-4">
+        {/* IMPORTANT: only allow the "table scroll container" on sm+ */}
+        <div className="sm:overflow-auto">
+          {/* Desktop/table header row ONLY (hide it on mobile) */}
+          <div className="hidden sm:flex px-4 pt-4 pb-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
             <div className="text-md font-bold">All habits</div>
+
             <div className="overflow-auto">
-              <div className="min-w-[14rem] sm:min-w-[16rem] grid grid-cols-8 gap-1 sm:gap-2">
+              <div className="min-w-[16rem] grid grid-cols-8 gap-2">
                 {days.map((d) => (
                   <div
                     key={d.iso}
@@ -211,6 +216,11 @@ export default async function HabitsPage() {
                 <div className="w-8 h-8" aria-hidden />
               </div>
             </div>
+          </div>
+
+          {/* Mobile header */}
+          <div className="sm:hidden px-4 pt-4 pb-3">
+            <div className="text-md font-bold">All habits</div>
           </div>
 
           {view.length === 0 ? (
