@@ -20,11 +20,11 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
-    "next": "15.5.9",
+    "next": "15.5.12",
     "next-themes": "^0.4.6",
     "prisma": "^6.15.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "react-hook-form": "^7.62.0",
     "zod": "^4.0.17"
   },
@@ -37,7 +37,7 @@
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "15.4.6",
+    "eslint-config-next": "15.5.12",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2"
   }
