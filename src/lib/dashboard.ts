@@ -1,3 +1,5 @@
+// /src/lib/dashboard.ts
+
 import { prisma } from "./prisma";
 import { unstable_cache } from "next/cache";
 
@@ -8,11 +10,6 @@ async function _getDashboardMetrics(userId: string) {
   let goalsOnTrack = 0;
 
   try {
-    // Single raw query to grab all 4 metrics:
-    // - habitsToday
-    // - openTasks
-    // - goalsTotal
-    // - goalsOnTrack (computed in SQL instead of JS)
     const [row] = await prisma.$queryRaw<
       {
         habits_today: bigint;
@@ -92,15 +89,15 @@ async function _getDashboardMetrics(userId: string) {
   };
 }
 
-/**
- * Wrapped in unstable_cache for a small perf boost:
- * - results are cached per userId
- * - revalidated every 30 seconds
- */
-export const getDashboardMetrics = unstable_cache(
-  (userId: string) => _getDashboardMetrics(userId),
-  ["dashboard-metrics"],
-  {
-    revalidate: 30,
-  }
-);
+export async function getDashboardMetrics(userId: string) {
+  const cached = unstable_cache(
+    () => _getDashboardMetrics(userId),
+    ["dashboard-metrics", userId],
+    {
+      revalidate: 30,
+      tags: [`dashboard-metrics:${userId}`],
+    }
+  );
+
+  return cached();
+}
