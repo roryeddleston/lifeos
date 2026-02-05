@@ -2,18 +2,28 @@ import { SignIn } from "@clerk/nextjs";
 
 export default function SignInPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--text)] px-4">
-      <div className="w-full max-w-md bg-[var(--card)] border border-[var(--border)] rounded-lg shadow p-6">
-        <h1 className="text-2xl font-semibold mb-6 text-center">
+    <main className="min-h-[100dvh] w-full bg-[var(--bg)] text-[var(--text)] flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <h1 className="mb-6 text-center text-2xl font-semibold">
           Welcome to Life OS
         </h1>
+
         <SignIn
           fallbackRedirectUrl="/"
           appearance={{
             elements: {
-              card: "shadow-none border-none",
+              rootBox: "w-full flex justify-center",
+              cardBox: "w-full max-w-md mx-auto self-center",
+              card: "w-full max-w-none mx-auto shadow-none border-0 bg-transparent p-0",
+
+              main: "w-full",
+              header: "text-center",
+              footer: "justify-center",
+
               formButtonPrimary:
-                "bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 transition",
+                "w-full bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90 transition",
+
+              socialButtonsBlockButton: "w-full",
             },
           }}
         />
