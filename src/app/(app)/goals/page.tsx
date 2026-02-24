@@ -1,10 +1,20 @@
 import { auth } from "@clerk/nextjs/server";
+import { unstable_cache } from "next/cache";
 import GoalsTabs from "@/components/goals/GoalsTabs";
 import QuickAddGoal from "@/components/goals/QuickAddGoal";
 import { formatDueLabel } from "@/lib/date";
 import { getGoalsForUser } from "@/lib/goals";
 
 export const runtime = "nodejs";
+
+const getCachedGoalsForUser = (userId: string) =>
+  unstable_cache(
+    () => getGoalsForUser(userId),
+    ["goals-for-user", userId],
+    {
+      revalidate: 20,
+    }
+  )();
 
 export default async function GoalsPage() {
   const { userId } = await auth();
@@ -22,7 +32,7 @@ export default async function GoalsPage() {
   }> = [];
 
   try {
-    goalsDb = await getGoalsForUser(userId);
+    goalsDb = await getCachedGoalsForUser(userId);
   } catch {
     console.warn("GoalsPage: DB unavailable, rendering empty state.");
     goalsDb = [];
