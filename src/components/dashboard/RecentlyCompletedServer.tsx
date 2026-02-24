@@ -1,4 +1,4 @@
-import { unstable_noStore as noStore } from "next/cache";
+import { unstable_cache } from "next/cache";
 import { getRecentlyCompletedTasksForUser } from "@/lib/tasks";
 
 export const runtime = "nodejs";
@@ -9,18 +9,27 @@ type RecentTask = {
   completedAt: string;
 };
 
+const getCachedRecentlyCompletedTasks = unstable_cache(
+  async (userId: string, limit: number) => {
+    return getRecentlyCompletedTasksForUser(userId, limit);
+  },
+  ["recently-completed-tasks"],
+  {
+    revalidate: 10,
+  }
+);
+
 export default async function RecentlyCompletedServer({
   userId,
 }: {
   userId: string;
 }) {
-  noStore(); // always fetch fresh
   if (!userId) return null;
 
   // explicitly typed so TS doesn’t infer any[]
   let items: RecentTask[] = [];
   try {
-    items = await getRecentlyCompletedTasksForUser(userId, 5);
+    items = await getCachedRecentlyCompletedTasks(userId, 5);
   } catch {
     items = [];
   }

@@ -1,21 +1,30 @@
-import { unstable_noStore as noStore } from "next/cache";
+import { unstable_cache } from "next/cache";
 import ProgressFill from "@/components/anim/ProgressFill";
 import { getGoalsForProgressWidget } from "@/lib/goals";
 
 type GoalProgress = { id: string; title: string; progress: number };
+
+const getCachedGoalsForProgressWidget = unstable_cache(
+  async (userId: string) => {
+    // lightweight, capped query
+    return getGoalsForProgressWidget(userId, 24);
+  },
+  ["goals-progress-widget"],
+  {
+    revalidate: 15,
+  }
+);
 
 export default async function GoalProgressServer({
   userId,
 }: {
   userId: string;
 }) {
-  noStore(); // render dynamically (no caching)
   if (!userId) return null;
 
   let items: GoalProgress[] = [];
   try {
-    // lightweight, capped query
-    const rows = await getGoalsForProgressWidget(userId, 24);
+    const rows = await getCachedGoalsForProgressWidget(userId);
 
     const mapped = rows
       .map(({ id, title, targetValue, currentValue }) => {
