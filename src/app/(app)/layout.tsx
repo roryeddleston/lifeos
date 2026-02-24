@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
+import Providers from "@/app/providers";
 
 export default async function AppLayout({
   children,
@@ -13,5 +14,9 @@ export default async function AppLayout({
     redirect("/sign-in");
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <Providers>
+      <AppShell>{children}</AppShell>
+    </Providers>
+  );
 }
