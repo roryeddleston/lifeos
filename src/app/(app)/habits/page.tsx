@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { unstable_cache } from "next/cache";
 import Card from "@/components/cards/Card";
 import HabitCard from "@/components/habits/HabitCard";
 import QuickAddHabit from "@/components/habits/QuickAddHabit";
@@ -8,19 +7,6 @@ import SparkBars from "@/components/habits/SparkBars";
 import { getHabitsForUserInRange } from "@/lib/habits";
 
 export const runtime = "nodejs";
-
-const getCachedHabitsForUserInRange = (
-  userId: string,
-  start: Date,
-  end: Date
-) =>
-  unstable_cache(
-    () => getHabitsForUserInRange(userId, start, end),
-    ["habits-range", userId, start.toISOString(), end.toISOString()],
-    {
-      revalidate: 20,
-    }
-  )();
 
 function startOfDayUTC(d = new Date()) {
   return new Date(
@@ -34,13 +20,8 @@ function addDays(d: Date, n: number) {
   return copy;
 }
 
-function toISODate(d: Date | string) {
-  if (typeof d === "string") {
-    // Assume ISO-like string and slice date portion
-    return d.slice(0, 10);
-  }
-  const date = d instanceof Date ? d : new Date(d);
-  return date.toISOString().slice(0, 10);
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
 }
 
 function maxRun(arr: boolean[]) {
@@ -73,7 +54,7 @@ export default async function HabitsPage() {
   const start = addDays(today, -6);
   const end = addDays(today, 1);
 
-  const habits = await getCachedHabitsForUserInRange(userId, start, end);
+  const habits = await getHabitsForUserInRange(userId, start, end);
 
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = addDays(start, i);
