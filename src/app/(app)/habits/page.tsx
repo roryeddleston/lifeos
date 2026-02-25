@@ -34,8 +34,13 @@ function addDays(d: Date, n: number) {
   return copy;
 }
 
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+function toISODate(d: Date | string) {
+  if (typeof d === "string") {
+    // Assume ISO-like string and slice date portion
+    return d.slice(0, 10);
+  }
+  const date = d instanceof Date ? d : new Date(d);
+  return date.toISOString().slice(0, 10);
 }
 
 function maxRun(arr: boolean[]) {
